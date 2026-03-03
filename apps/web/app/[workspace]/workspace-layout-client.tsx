@@ -1,11 +1,11 @@
 "use client";
 
+import { SquareChartGantt, SquaresExclude } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
 import { AppSidebar } from "@/components/app-sidebar";
+import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
-import { Button } from "@/components/ui/button";
-import { SquareChartGantt, SquaresExclude } from 'lucide-react';
-import { useRouter, usePathname } from "next/navigation";
 
 export function WorkspaceLayoutClient({
   children,
@@ -20,33 +20,32 @@ export function WorkspaceLayoutClient({
     router.replace(`${base}/${target}`);
   };
 
-  const isProjectRoute = /^\/test\/projects\/[^\/]+\/(overview|issues)\/?$/.test(
-    pathname ?? ""
-  );
-
+  const isProjectRoute = pathname?.includes("/projects") ?? false;
   const isSettingsRoute = pathname?.includes("/settings") ?? false;
+
   return (
     <SidebarProvider>
       {!isSettingsRoute && <AppSidebar />}
       <div className="flex h-full w-full flex-col">
-        {!isSettingsRoute &&  (
+        {!isSettingsRoute && (
           <header className="flex h-12 w-full shrink-0 items-center gap-4 border-b px-4 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
             <SidebarTrigger className="-ml-1" />
             <Separator className="h-4 bg-border" orientation="vertical" />
-            {
-              isProjectRoute && (
-                <div className="flex items-center gap-2">
-                <Button variant="outline" onClick={() => navigateTo("overview")}>
-                <SquareChartGantt />
+            {isProjectRoute ? (
+              <div className="flex items-center gap-2">
+                <Button
+                  onClick={() => navigateTo("overview")}
+                  variant="outline"
+                >
+                  <SquareChartGantt />
                   Overview
-                  </Button>
-                <Button variant="outline" onClick={() => navigateTo("issues")}>
+                </Button>
+                <Button onClick={() => navigateTo("issues")} variant="outline">
                   <SquaresExclude />
                   Issues
-                  </Button>
-            </div>
-              )
-            }
+                </Button>
+              </div>
+            ) : null}
           </header>
         )}
         {children}
