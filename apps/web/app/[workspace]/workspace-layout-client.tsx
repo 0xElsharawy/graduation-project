@@ -1,7 +1,7 @@
 "use client";
 
 import { SquareChartGantt, SquaresExclude } from "lucide-react";
-import { usePathname, useRouter } from "next/navigation";
+import { useParams, usePathname, useRouter } from "next/navigation";
 import { AppSidebar } from "@/components/app-sidebar";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -14,13 +14,14 @@ export function WorkspaceLayoutClient({
 }) {
   const router = useRouter();
   const pathname = usePathname();
+  const { project } = useParams();
 
   const navigateTo = (target: "overview" | "issues") => {
     const base = pathname?.replace(/\/(overview|issues)\/?$/, "") ?? "";
     router.replace(`${base}/${target}`);
   };
 
-  const isProjectRoute = pathname?.includes("/projects") ?? false;
+  const isProjectRoute = project && pathname?.includes("/projects");
   const isSettingsRoute = pathname?.includes("/settings") ?? false;
 
   return (
