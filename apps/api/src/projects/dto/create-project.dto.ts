@@ -1,11 +1,11 @@
 import { ApiProperty } from "@nestjs/swagger";
 import {
+  IsDate,
   IsEnum,
   IsInt,
   IsNotEmpty,
   IsOptional,
   IsString,
-  IsDate,
   Max,
   Min,
 } from "class-validator";
