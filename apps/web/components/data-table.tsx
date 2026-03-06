@@ -7,7 +7,7 @@ import {
   Row,
   useReactTable,
 } from "@tanstack/react-table";
-
+import { usePathname, useRouter } from "next/navigation";
 import {
   Table,
   TableBody,
@@ -16,7 +16,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useRouter, usePathname } from "next/navigation";
 
 type DataTableProps<TData, TValue> = {
   columns: ColumnDef<TData, TValue>[];
@@ -32,10 +31,11 @@ export function DataTable<TData, TValue>({
   const router = useRouter();
   const pathname = usePathname();
 
+  console.log("data", data);
   const handleRowClick = (row: Row<TData>) => {
     onRowClick ? () => onRowClick(row) : undefined;
     router.push(`${pathname}/${(row.original as any).id}/overview`);
-  } 
+  };
 
   const table = useReactTable({
     data,
@@ -44,7 +44,7 @@ export function DataTable<TData, TValue>({
   });
 
   return (
-    <div className="overflow-hidden rounded-md">
+    <div>
       <Table>
         <TableHeader>
           {table.getHeaderGroups().map((headerGroup) => (
