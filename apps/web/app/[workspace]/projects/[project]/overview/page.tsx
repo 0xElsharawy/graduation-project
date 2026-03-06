@@ -204,7 +204,7 @@ export default function ProjectOverview() {
   return (
     <div className="px-8 py-10">
       <Textarea
-        className="min-h-12 resize-none border-none p-0 font-bold text-2xl! shadow-none focus-visible:ring-0 md:text-3xl"
+        className="min-h-12 resize-none border-none bg-background! p-0 font-bold text-2xl! shadow-none focus-visible:ring-0 md:text-3xl"
         onChange={(e) => setProjectName(e.target.value)}
         placeholder="Untitled Project"
         rows={1}
@@ -247,7 +247,7 @@ export default function ProjectOverview() {
         </PropertyRow>
       </div>
       <Textarea
-        className="mt-8 min-h-[72px] resize-none border-none p-0 shadow-none focus-visible:ring-0"
+        className="mt-8 min-h-[72px] resize-none border-none bg-background! shadow-none focus-visible:ring-0"
         onChange={(e) => setDescription(e.target.value)}
         placeholder="Add a project description..."
         value={description}

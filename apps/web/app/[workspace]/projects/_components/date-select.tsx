@@ -23,12 +23,7 @@ export default function DateSelect({
     <div className="flex items-center gap-2">
       <Popover>
         <PopoverTrigger asChild>
-          <Button
-            className="h-8 gap-1.5"
-            size="sm"
-            type="button"
-            variant="outline"
-          >
+          <Button className="gap-1.5" size="sm" type="button" variant="outline">
             {startDate ? (
               format(startDate, "MMM dd, yyyy")
             ) : (
@@ -54,7 +49,7 @@ export default function DateSelect({
       <Popover>
         <PopoverTrigger asChild>
           <Button
-            className="h-8 gap-1.5"
+            className="gap-1.5"
             disabled={!startDate}
             size="sm"
             type="button"

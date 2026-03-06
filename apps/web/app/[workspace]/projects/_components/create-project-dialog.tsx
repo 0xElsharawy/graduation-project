@@ -141,7 +141,7 @@ export function CreateProjectDialog({
                   <FormItem>
                     <FormControl>
                       <Input
-                        className="h-12 border-none p-0 font-bold text-xl! shadow-none outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0"
+                        className="h-12 border-none bg-background! p-0 font-bold text-xl! shadow-none outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0"
                         placeholder="Project name"
                         {...field}
                       />
@@ -189,7 +189,7 @@ export function CreateProjectDialog({
                     <FormItem>
                       <FormControl>
                         <Textarea
-                          className="min-h-[200px] resize-none border-none p-0 text-base! shadow-none outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0"
+                          className="min-h-[200px] resize-none border-none bg-background! p-0 text-base! shadow-none outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0"
                           placeholder="Write a description, a project brief, or collect ideas..."
                           {...field}
                         />
