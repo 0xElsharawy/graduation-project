@@ -1,6 +1,5 @@
 "use client";
 
-import { Separator } from "@/components/ui/separator";
 import {
   Sidebar,
   SidebarContent,
@@ -24,8 +23,6 @@ export default function SettingsLayout({
       <SidebarInset>
         <header className="flex h-12 shrink-0 items-center gap-4 border-b px-4 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
           <SidebarTrigger className="-ml-1" />
-          <Separator className="h-4 bg-border" orientation="vertical" />
-          <h1 className="font-semibold text-lg">Settings</h1>
         </header>
         <main className="flex-1 overflow-auto p-6">{children}</main>
       </SidebarInset>

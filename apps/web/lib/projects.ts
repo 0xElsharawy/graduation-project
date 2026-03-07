@@ -166,6 +166,7 @@ export type UpdateProjectTaskData = {
   status?: ProjectStatus;
   priority?: number;
   dueDate?: Date;
+  assigneeId?: string;
 };
 
 export const updateProjectTask = async (

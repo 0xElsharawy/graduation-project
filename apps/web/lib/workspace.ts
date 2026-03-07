@@ -13,6 +13,7 @@ export type Workspace = {
 
 export type WorkspaceMember = {
   id: number;
+  userId: string;
   name: string | null;
   email: string | null;
   image: string | null;

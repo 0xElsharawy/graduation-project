@@ -15,7 +15,7 @@ import {
   OctagonAlert as UrgentPriorityIcon,
 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
   Accordion,
@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/accordion";
 import { attempt } from "@/lib/error-handling";
 import { type ProjectTask } from "@/lib/projects";
+import { getUser } from "@/lib/user";
 import { findWorkspaceBySlug } from "@/lib/workspace";
 import { CreateTaskDialog } from "../projects/_components/create-task-dialog";
 
@@ -92,11 +93,15 @@ function formatDueDate(date?: Date): string | null {
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
-function getInitials(id?: string): string {
+async function getUsernameInitials(id?: string): Promise<string> {
   if (!id) {
     return "?";
   }
-  return id.slice(0, 2).toUpperCase();
+  const [result, error] = await attempt(getUser(id));
+  if (error || !result) {
+    return "?";
+  }
+  return result.data.user.name?.slice(0, 2).toUpperCase() ?? "?";
 }
 
 function TaskRow({ task }: { task: ProjectTask }) {
@@ -104,6 +109,8 @@ function TaskRow({ task }: { task: ProjectTask }) {
   const params = useParams();
   const workspaceId = params.workspace as string;
   const projectId = params.project as string;
+
+  const [usernameInitials, setUsernameInitials] = useState<string | null>(null);
 
   const status = statusConfig.find((s) => s.value === task.status);
   const priority =
@@ -114,6 +121,12 @@ function TaskRow({ task }: { task: ProjectTask }) {
   const handleClick = () => {
     router.push(`/${workspaceId}/projects/${projectId}/issues/${task.id}`);
   };
+
+  useEffect(() => {
+    getUsernameInitials(task.assigneeId).then((initials) => {
+      setUsernameInitials(initials);
+    });
+  }, [task.assigneeId]);
 
   return (
     <button
@@ -144,7 +157,7 @@ function TaskRow({ task }: { task: ProjectTask }) {
             title={task.assigneeId}
           >
             <span className="font-semibold text-[10px] leading-none">
-              {getInitials(task.assigneeId)}
+              {usernameInitials}
             </span>
           </div>
         ) : (

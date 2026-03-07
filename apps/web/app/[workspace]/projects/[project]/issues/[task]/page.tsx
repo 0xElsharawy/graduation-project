@@ -2,7 +2,6 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { useAtom } from "jotai";
 import { Calendar as CalendarIcon, Gauge, User } from "lucide-react";
 import { useParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -16,7 +15,6 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
-import { currentWorkspaceAtom } from "@/lib/atoms/current-workspace";
 import { attempt } from "@/lib/error-handling";
 import {
   getProjectTask,
@@ -24,7 +22,9 @@ import {
   type UpdateProjectTaskData,
   updateProjectTask,
 } from "@/lib/projects";
+import { findWorkspaceBySlug } from "@/lib/workspace";
 import StatusPriority from "../../../_components/status-priority";
+import { AssignUserPopover } from "./_components/assign-user-popover";
 
 function PropertyRow({
   icon,
@@ -50,7 +50,7 @@ export default function TaskPage() {
   const params = useParams();
   const projectId = params.project as string;
   const taskId = params.task as string;
-  const [currentWorkspace] = useAtom(currentWorkspaceAtom);
+  const slug = decodeURIComponent(params.workspace as string);
 
   const [taskName, setTaskName] = useState("");
   const [description, setDescription] = useState("");
@@ -61,17 +61,32 @@ export default function TaskPage() {
   const [selectedPriority, setSelectedPriority] = useState<
     number | undefined
   >();
+  const [selectedAssignee, setSelectedAssignee] = useState<
+    string | undefined
+  >();
 
   const isInitialized = useRef(false);
-  const workspaceId = currentWorkspace?.id;
   const queryClient = useQueryClient();
 
+  const { data: workspaceData, isLoading: isWorkspaceLoading } = useQuery({
+    queryKey: ["workspace", slug],
+    enabled: !!slug,
+    queryFn: async () => {
+      const [result, error] = await attempt(findWorkspaceBySlug(slug));
+      if (error || !result) {
+        toast.error("Error while fetching workspace");
+        throw new Error("Failed to fetch workspace");
+      }
+      return result.data.workspace;
+    },
+  });
+
   const { data: taskData, isLoading } = useQuery({
-    queryKey: ["task", workspaceId, projectId, taskId],
-    enabled: !!workspaceId && !!projectId && !!taskId,
+    queryKey: ["task", workspaceData?.id, projectId, taskId],
+    enabled: !!workspaceData?.id && !!projectId && !!taskId,
     queryFn: async () => {
       const [result, error] = await attempt(
-        getProjectTask(workspaceId as string, projectId, taskId)
+        getProjectTask(workspaceData?.id ?? "", projectId, taskId)
       );
       if (error || !result) {
         toast.error("Failed to load task");
@@ -91,6 +106,7 @@ export default function TaskPage() {
     setSelectedStatus(taskData.status);
     setSelectedPriority(taskData.priority);
     setDueDate(taskData.dueDate ? new Date(taskData.dueDate) : undefined);
+    setSelectedAssignee(taskData.assigneeId ?? undefined);
     setTimeout(() => {
       isInitialized.current = true;
     }, 0);
@@ -98,11 +114,11 @@ export default function TaskPage() {
 
   const updateMutation = useMutation({
     mutationFn: async (data: UpdateProjectTaskData) => {
-      if (!workspaceId) {
+      if (!workspaceData?.id) {
         throw new Error("No workspace selected");
       }
       const [result, error] = await attempt(
-        updateProjectTask(workspaceId, projectId, taskId, data)
+        updateProjectTask(workspaceData.id, projectId, taskId, data)
       );
       if (error || !result) {
         throw new Error("Failed to update task");
@@ -139,6 +155,13 @@ export default function TaskPage() {
     });
   };
 
+  const handleAssigneeChange = (userId: string | null) => {
+    setSelectedAssignee(userId ?? undefined);
+    updateMutation.mutate({
+      assigneeId: userId ?? undefined,
+    });
+  };
+
   useEffect(() => {
     if (!isInitialized.current) {
       return;
@@ -160,7 +183,7 @@ export default function TaskPage() {
     return () => clearTimeout(id);
   }, [taskName, description, updateMutation.mutate]);
 
-  if (isLoading) {
+  if (isLoading || isWorkspaceLoading) {
     return <Loading />;
   }
 
@@ -174,7 +197,7 @@ export default function TaskPage() {
         value={taskName}
       />
 
-      <div className="flex flex-col divide-y">
+      <div className="flex flex-col border-b pb-4">
         <PropertyRow
           icon={<Gauge className="size-4" />}
           label="Status & Priority"
@@ -226,7 +249,11 @@ export default function TaskPage() {
         </PropertyRow>
 
         <PropertyRow icon={<User className="size-4" />} label="Assignee">
-          <span className="text-muted-foreground text-sm">No assignee</span>
+          <AssignUserPopover
+            currentAssigneeId={selectedAssignee}
+            onAssign={handleAssigneeChange}
+            workspaceId={workspaceData?.id ?? ""}
+          />
         </PropertyRow>
       </div>
 
