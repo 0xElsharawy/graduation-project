@@ -2,10 +2,11 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { format } from "date-fns";
 import { useSetAtom } from "jotai";
 import { ChevronRight } from "lucide-react";
 import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -18,6 +19,7 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
 import {
   Dialog,
   DialogContent,
@@ -32,6 +34,11 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
 import { projectsDataAtom } from "@/lib/atoms/projects-data";
 import { attempt } from "@/lib/error-handling";
@@ -41,7 +48,6 @@ import {
   listProjects,
 } from "@/lib/projects";
 import type { Workspace } from "@/lib/workspace";
-import DateSelect from "./date-select";
 import StatusPriority from "./status-priority";
 
 type CreateTaskDialogProps = {
@@ -62,6 +68,7 @@ const schema = z.object({
   ]),
   priority: z.number().min(0).max(4),
   projectId: z.string().min(1, "Project is required"),
+  dueDate: z.date().nullable().optional(),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -72,9 +79,6 @@ export function CreateTaskDialog({
   workspace,
 }: CreateTaskDialogProps) {
   const { project } = useParams();
-  const [startDate, setStartDate] = useState<Date>();
-  const [targetDate, setTargetDate] = useState<Date>();
-
   const queryClient = useQueryClient();
   const setProjectsData = useSetAtom(projectsDataAtom);
 
@@ -88,6 +92,7 @@ export function CreateTaskDialog({
       status: "backlog",
       priority: 0,
       projectId: projectId || "",
+      dueDate: undefined,
     },
     mode: "onChange",
   });
@@ -139,6 +144,7 @@ export function CreateTaskDialog({
       status: data.status,
       priority: data.priority,
       projectId: data.projectId,
+      dueDate: data.dueDate ?? undefined,
     });
   }
 
@@ -190,11 +196,37 @@ export function CreateTaskDialog({
 
               <div className="flex gap-2">
                 <StatusPriority form={form.control} showProjectSelector />
-                <DateSelect
-                  setStartDate={setStartDate}
-                  setTargetDate={setTargetDate}
-                  startDate={startDate}
-                  targetDate={targetDate}
+                <FormField
+                  control={form.control}
+                  name="dueDate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormControl>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button size="sm" type="button" variant="outline">
+                              {field.value
+                                ? format(field.value, "MMM dd, yyyy")
+                                : "Set due date"}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent align="start" className="w-auto p-0">
+                            <Calendar
+                              disabled={(date) =>
+                                date <
+                                new Date(Date.now() - 1000 * 60 * 60 * 24)
+                              }
+                              mode="single"
+                              onSelect={field.onChange}
+                              required
+                              selected={field.value ?? undefined}
+                            />
+                          </PopoverContent>
+                        </Popover>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
               </div>
 

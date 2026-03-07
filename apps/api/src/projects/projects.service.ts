@@ -104,6 +104,13 @@ export class ProjectsService {
   }
 
   async createTask(projectId: string, body: CreateTaskDto) {
+    let dueDate: Date | undefined;
+    if (body.dueDate) {
+      dueDate = new Date(body.dueDate);
+      if (dueDate.getTime() < Date.now() - 1000 * 60 * 60 * 24) {
+        throw new BadRequestException("Due date must be in the future");
+      }
+    }
     const [project, projectError] = await attempt(
       db.select().from(projects).where(eq(projects.id, projectId))
     );
