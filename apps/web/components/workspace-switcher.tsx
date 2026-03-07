@@ -1,7 +1,6 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { useAtom } from "jotai";
 import { ChevronDown, ExternalLink, Plus, Settings, Users } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -22,7 +21,6 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { currentWorkspaceAtom } from "@/lib/atoms/current-workspace";
 import { attempt } from "@/lib/error-handling";
 import { findWorkspaceBySlug, listWorkspaces } from "@/lib/workspace";
 import { CreateTaskDialog } from "../app/[workspace]/projects/_components/create-task-dialog";
@@ -34,7 +32,6 @@ export function WorkspaceSwitcher() {
   const params = useParams();
   const slug = decodeURIComponent(params.workspace as string);
   const { isMobile } = useSidebar();
-  const [activeWorkspace, setActiveWorkspace] = useAtom(currentWorkspaceAtom);
   const { data: workspaces } = useQuery({
     queryKey: ["workspaces"],
     queryFn: async () => {
@@ -44,7 +41,6 @@ export function WorkspaceSwitcher() {
         return;
       }
       if (result.data.workspaces.length > 0) {
-        setActiveWorkspace(result.data.workspaces[0]);
         return result.data;
       }
       router.push("/workspaces/new");
@@ -61,13 +57,12 @@ export function WorkspaceSwitcher() {
         toast.error("Error while fetching workspace");
         return;
       }
-      setActiveWorkspace(result?.data.workspace);
       return result?.data.workspace;
     },
     enabled: !!slug,
   });
 
-  if (isWorkspaceLoading) {
+  if (isWorkspaceLoading || !_workspace) {
     return null;
   }
 
@@ -83,12 +78,12 @@ export function WorkspaceSwitcher() {
               >
                 <div className="flex aspect-square size-6 items-center justify-center rounded-sm bg-primary text-white">
                   <span className="font-semibold text-xs">
-                    {activeWorkspace?.name.slice(0, 2).toUpperCase()}
+                    {_workspace?.name.slice(0, 2).toUpperCase()}
                   </span>
                 </div>
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-medium">
-                    {activeWorkspace?.name}
+                    {_workspace?.name}
                   </span>
                 </div>
                 <ChevronDown className="ml-auto size-4" />
@@ -108,7 +103,6 @@ export function WorkspaceSwitcher() {
                   className="gap-2 p-2"
                   key={workspace.name}
                   onClick={() => {
-                    setActiveWorkspace(workspace);
                     router.push(`/${encodeURIComponent(workspace.slug)}`);
                   }}
                 >
@@ -129,7 +123,7 @@ export function WorkspaceSwitcher() {
               <DropdownMenuItem className="gap-2 p-2">
                 <Link
                   className="flex items-center gap-2"
-                  href={`/${encodeURIComponent(activeWorkspace?.slug ?? "")}/settings/members`}
+                  href={`/${encodeURIComponent(_workspace.slug ?? "")}/settings/members`}
                 >
                   <div className="flex size-6 items-center justify-center rounded-md border bg-transparent">
                     <Users className="size-4" />
@@ -142,7 +136,7 @@ export function WorkspaceSwitcher() {
               <DropdownMenuItem asChild className="gap-2 p-2">
                 <Link
                   className="flex items-center gap-2"
-                  href={`/${encodeURIComponent(activeWorkspace?.slug ?? "")}/settings/preferences`}
+                  href={`/${encodeURIComponent(_workspace?.slug ?? "")}/settings/preferences`}
                 >
                   <div className="flex size-6 items-center justify-center rounded-md border bg-transparent">
                     <Settings className="size-4" />
@@ -181,7 +175,7 @@ export function WorkspaceSwitcher() {
       <CreateTaskDialog
         onOpenChange={setDialogOpen}
         open={dialogOpen}
-        workspace={activeWorkspace!}
+        workspace={_workspace}
       />
     </>
   );
