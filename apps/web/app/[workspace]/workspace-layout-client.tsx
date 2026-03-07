@@ -8,8 +8,6 @@ import { ModeToggle } from "@/components/ui/mode-toggle";
 import { Separator } from "@/components/ui/separator";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 
-const regex = /\/(overview|issues)\/?$/;
-
 export function WorkspaceLayoutClient({
   children,
 }: {
@@ -17,11 +15,11 @@ export function WorkspaceLayoutClient({
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { project } = useParams();
+  const { project, workspace: slug } = useParams();
+  const workspaceSlug = decodeURIComponent(slug as string);
 
   const navigateTo = (target: "overview" | "issues") => {
-    const base = pathname?.replace(regex, "") ?? "";
-    router.replace(`${base}/${target}`);
+    router.replace(`/${workspaceSlug}/projects/${project}/${target}`);
   };
 
   const isProjectRoute = project && pathname?.includes("/projects");
