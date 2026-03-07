@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
@@ -70,9 +71,6 @@ export class ProjectsService {
     );
     if (projectError) {
       throw new InternalServerErrorException("Failed to delete project");
-    }
-    if (!project?.[0]) {
-      throw new NotFoundException("Project not found");
     }
 
     return ok({ projectId: project?.[0]?.id });
@@ -159,14 +157,25 @@ export class ProjectsService {
   }
 
   async updateTask(taskId: string, body: UpdateTaskDto) {
+    let dueDate: Date | undefined;
+    if (body.dueDate) {
+      dueDate = new Date(body.dueDate);
+      if (dueDate.getTime() < Date.now() - 1000 * 60 * 60 * 24) {
+        throw new BadRequestException("Due date must be in the future");
+      }
+    }
+
     const [task, taskError] = await attempt(
-      db.update(tasks).set(body).where(eq(tasks.id, taskId))
+      db
+        .update(tasks)
+        .set({
+          ...body,
+          dueDate,
+        })
+        .where(eq(tasks.id, taskId))
     );
     if (taskError) {
       throw new InternalServerErrorException("Failed to update task");
-    }
-    if (!task?.[0]) {
-      throw new NotFoundException("Task not found");
     }
 
     return ok({ taskId: task?.[0]?.id });
