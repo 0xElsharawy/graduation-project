@@ -1,3 +1,6 @@
+"use client";
+
+import { useQuery } from "@tanstack/react-query";
 import {
   CheckCircle2,
   Circle,
@@ -11,13 +14,19 @@ import {
   Plus,
   OctagonAlert as UrgentPriorityIcon,
 } from "lucide-react";
+import { useParams, useRouter } from "next/navigation";
+import { useState } from "react";
+import { toast } from "sonner";
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { attempt } from "@/lib/error-handling";
 import { type ProjectTask } from "@/lib/projects";
+import { findWorkspaceBySlug } from "@/lib/workspace";
+import { CreateTaskDialog } from "../projects/_components/create-task-dialog";
 
 const statusConfig = [
   {
@@ -91,14 +100,27 @@ function getInitials(id?: string): string {
 }
 
 function TaskRow({ task }: { task: ProjectTask }) {
+  const router = useRouter();
+  const params = useParams();
+  const workspaceId = params.workspace as string;
+  const projectId = params.project as string;
+
   const status = statusConfig.find((s) => s.value === task.status);
   const priority =
     priorityConfig.find((p) => p.value === task.priority) ?? priorityConfig[0];
   const dueDate = formatDueDate(task.dueDate);
   const taskShortId = task.id.slice(0, 8).toUpperCase();
 
+  const handleClick = () => {
+    router.push(`/${workspaceId}/projects/${projectId}/issues/${task.id}`);
+  };
+
   return (
-    <div className="group flex cursor-pointer items-center justify-between border-border/50 border-b px-4 py-2 transition-colors hover:bg-accent/40">
+    <button
+      className="group flex w-full cursor-pointer items-center justify-between border-border/50 border-b px-4 py-2 text-left transition-colors hover:bg-accent/40"
+      onClick={handleClick}
+      type="button"
+    >
       <div className="flex min-w-0 items-center gap-3">
         <span className="shrink-0 opacity-60 transition-opacity group-hover:opacity-100">
           {priority?.icon}
@@ -129,7 +151,7 @@ function TaskRow({ task }: { task: ProjectTask }) {
           <div className="size-5 shrink-0 rounded-sm border border-border border-dashed" />
         )}
       </div>
-    </div>
+    </button>
   );
 }
 
@@ -149,6 +171,26 @@ export default function IssuesTable({
   projectTaskData: ProjectTask[] | undefined;
 }) {
   const tasks = projectTaskData ?? [];
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const params = useParams();
+  const slug = decodeURIComponent(params.workspace as string);
+
+  const { data: workspace, isLoading: isWorkspaceLoading } = useQuery({
+    queryKey: ["workspace", slug],
+    queryFn: async () => {
+      const [result, error] = await attempt(findWorkspaceBySlug(slug));
+      if (error || !result) {
+        toast.error("Error while fetching workspace");
+        return;
+      }
+      return result?.data.workspace;
+    },
+    enabled: !!slug,
+  });
+
+  if (isWorkspaceLoading || !workspace) {
+    return null;
+  }
 
   return (
     <div className="w-full">
@@ -177,6 +219,7 @@ export default function IssuesTable({
                 </AccordionTrigger>
                 <button
                   className="flex size-6 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                  onClick={() => setDialogOpen(true)}
                   title={`Add ${status.label} issue`}
                   type="button"
                 >
@@ -197,6 +240,11 @@ export default function IssuesTable({
           );
         })}
       </Accordion>
+      <CreateTaskDialog
+        onOpenChange={setDialogOpen}
+        open={dialogOpen}
+        workspace={workspace}
+      />
     </div>
   );
 }

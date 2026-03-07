@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowRight,
   CalendarDays,
@@ -10,13 +10,25 @@ import {
   CircleOff,
   Clock,
   FolderOpen,
+  MoreHorizontal,
   Plus,
+  Trash2,
 } from "lucide-react";
 import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Loading } from "@/components/loading";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -25,9 +37,15 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Separator } from "@/components/ui/separator";
 import { attempt } from "@/lib/error-handling";
-import { listProjects, type Project } from "@/lib/projects";
+import { deleteProject, listProjects, type Project } from "@/lib/projects";
 import { findWorkspaceBySlug } from "@/lib/workspace";
 import { CreateProjectDialog } from "./_components/create-project-dialog";
 
@@ -135,7 +153,15 @@ function StatCard({
   );
 }
 
-function ProjectCard({ project, href }: { project: Project; href: string }) {
+function ProjectCard({
+  project,
+  href,
+  onDelete,
+}: {
+  project: Project;
+  href: string;
+  onDelete: (project: Project) => void;
+}) {
   const status = STATUS_CONFIG[project.status];
   const priority = PRIORITY_CONFIG[project.priority] ?? PRIORITY_CONFIG[0];
   const StatusIcon = status.icon;
@@ -154,13 +180,39 @@ function ProjectCard({ project, href }: { project: Project; href: string }) {
 
   return (
     <Link href={`${href}/${project.id}/overview`}>
-      <Card className="flex h-full cursor-pointer flex-col transition-colors hover:bg-accent/40">
+      <Card className="group/card flex h-full cursor-pointer flex-col transition-colors hover:bg-accent/40">
         <CardHeader className="pb-0">
           <div className="flex items-start justify-between gap-2">
             <CardTitle className="line-clamp-1 font-semibold text-sm">
               {project.name}
             </CardTitle>
-            <ArrowRight className="mt-0.5 size-3.5 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover/card:opacity-100" />
+            <div className="flex items-center gap-2">
+              <ArrowRight className="mt-0.5 size-3.5 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover/card:opacity-100" />
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    className="size-6 opacity-0 transition-opacity group-hover/card:opacity-100"
+                    onClick={(e) => e.preventDefault()}
+                    size="icon"
+                    variant="ghost"
+                  >
+                    <MoreHorizontal className="size-3.5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    data-variant="destructive"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      onDelete(project);
+                    }}
+                  >
+                    <Trash2 className="size-3.5" />
+                    Delete
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
           {project.description ? (
             <p className="mt-1 line-clamp-2 text-muted-foreground text-xs">
@@ -224,8 +276,10 @@ export default function ProjectsPage() {
   const params = useParams();
   const pathname = usePathname();
   const slug = decodeURIComponent(params.workspace as string);
+  const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
 
   const { data: workspaceData, isLoading: isWorkspaceLoading } = useQuery({
     queryKey: ["workspace", slug],
@@ -252,6 +306,22 @@ export default function ProjectsPage() {
       return projectsResult.data.projects;
     },
     enabled: !!workspaceData?.id,
+  });
+
+  const { mutate: handleDelete, isPending: isDeleting } = useMutation({
+    mutationFn: (projectId: string) =>
+      deleteProject(workspaceData?.id ?? "", projectId),
+    onSuccess: () => {
+      toast.success("Project deleted");
+      queryClient.invalidateQueries({
+        queryKey: ["projects", workspaceData?.id],
+      });
+      setProjectToDelete(null);
+    },
+    onError: () => {
+      toast.error("Failed to delete project");
+      setProjectToDelete(null);
+    },
   });
 
   if (isProjectsLoading || isWorkspaceLoading) {
@@ -374,7 +444,12 @@ export default function ProjectsPage() {
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((project) => (
-            <ProjectCard href={pathname} key={project.id} project={project} />
+            <ProjectCard
+              href={pathname}
+              key={project.id}
+              onDelete={setProjectToDelete}
+              project={project}
+            />
           ))}
         </div>
       )}
@@ -384,6 +459,39 @@ export default function ProjectsPage() {
         open={dialogOpen}
         workspace={workspaceData}
       />
+
+      <AlertDialog
+        onOpenChange={(open) => !open && setProjectToDelete(null)}
+        open={!!projectToDelete}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete project</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete{" "}
+              <span className="font-medium text-foreground">
+                {projectToDelete?.name}
+              </span>
+              ? This action cannot be undone and will permanently remove the
+              project and all its issues.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={isDeleting}
+              onClick={() => {
+                if (projectToDelete) {
+                  handleDelete(projectToDelete.id);
+                }
+              }}
+              variant={"destructive"}
+            >
+              {isDeleting ? "Deleting…" : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
