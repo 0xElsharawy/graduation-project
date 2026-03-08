@@ -184,19 +184,29 @@ export default function IssuesTable({
     mutationFn: (taskId: string) =>
       deleteProjectTask(workspace?.id ?? "", projectId, taskId),
     onMutate: (taskId) => {
-      // Optimistic: remove from query cache
+      const removeTask = (prev: ProjectTask[] | undefined) =>
+        prev?.filter((t) => t.id !== taskId) ?? [];
+      queryClient.setQueryData<ProjectTask[]>(["tasks", projectId], removeTask);
       queryClient.setQueryData<ProjectTask[]>(
-        ["tasks", projectId],
-        (prev) => prev?.filter((t) => t.id !== taskId) ?? []
+        ["all-tasks", workspace?.id],
+        removeTask
+      );
+      queryClient.setQueryData<ProjectTask[]>(
+        ["my-tasks", workspace?.id],
+        removeTask
       );
     },
     onSuccess: () => {
       toast.success("Issue deleted");
       queryClient.invalidateQueries({ queryKey: ["tasks", projectId] });
+      queryClient.invalidateQueries({ queryKey: ["all-tasks", workspace?.id] });
+      queryClient.invalidateQueries({ queryKey: ["my-tasks", workspace?.id] });
     },
     onError: () => {
       toast.error("Failed to delete issue");
       queryClient.invalidateQueries({ queryKey: ["tasks", projectId] });
+      queryClient.invalidateQueries({ queryKey: ["all-tasks", workspace?.id] });
+      queryClient.invalidateQueries({ queryKey: ["my-tasks", workspace?.id] });
     },
     onSettled: () => {
       setTaskToDelete(null);

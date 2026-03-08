@@ -51,10 +51,6 @@ import {
   statusConfig,
 } from "./issue-config";
 
-// ---------------------------------------------------------------------------
-// Shared card body (used by both draggable card and drag overlay)
-// ---------------------------------------------------------------------------
-
 function KanbanCardContent({ task }: { task: ProjectTask }) {
   const [usernameInitials, setUsernameInitials] = useState<string | null>(null);
 
@@ -107,10 +103,6 @@ function KanbanCardContent({ task }: { task: ProjectTask }) {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Draggable card
-// ---------------------------------------------------------------------------
-
 function KanbanCard({
   task,
   onDeleteRequest,
@@ -142,7 +134,6 @@ function KanbanCard({
       ref={setNodeRef}
       style={style}
     >
-      {/* Drag handle area — covers the whole card except the menu button */}
       <button
         {...listeners}
         {...attributes}
@@ -153,7 +144,6 @@ function KanbanCard({
         <KanbanCardContent task={task} />
       </button>
 
-      {/* Context menu — positioned top-right, visible on hover */}
       <div className="absolute top-2 right-2 opacity-0 transition-opacity group-hover:opacity-100">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -187,7 +177,6 @@ function KanbanCard({
   );
 }
 
-// Ghost shown while dragging
 function KanbanCardOverlay({ task }: { task: ProjectTask }) {
   return (
     <div className="w-64 cursor-grabbing rounded-md border border-border bg-card p-3 shadow-xl ring-2 ring-primary/30">
@@ -195,10 +184,6 @@ function KanbanCardOverlay({ task }: { task: ProjectTask }) {
     </div>
   );
 }
-
-// ---------------------------------------------------------------------------
-// Column
-// ---------------------------------------------------------------------------
 
 function KanbanColumn({
   status,
@@ -220,7 +205,6 @@ function KanbanColumn({
   );
   return (
     <div className="flex w-64 shrink-0 flex-col">
-      {/* Column header */}
       <div className="mb-2 flex h-9 items-center justify-between rounded-md border border-border bg-muted/60 px-3">
         <div className="flex items-center gap-2">
           {status.icon}
@@ -239,7 +223,6 @@ function KanbanColumn({
         </button>
       </div>
 
-      {/* Drop zone */}
       <div
         className={`flex min-h-20 flex-col gap-2 rounded-md p-1 transition-colors ${
           isOver ? "bg-accent/40 ring-1 ring-border" : ""
@@ -263,10 +246,6 @@ function KanbanColumn({
     </div>
   );
 }
-
-// ---------------------------------------------------------------------------
-// Board
-// ---------------------------------------------------------------------------
 
 export default function IssuesKanban({
   projectTaskData,
@@ -305,7 +284,6 @@ export default function IssuesKanban({
     enabled: !!slug,
   });
 
-  // --- Move task (drag) ---
   const { mutate: updateStatus } = useMutation({
     mutationFn: ({
       taskId,
@@ -323,27 +301,41 @@ export default function IssuesKanban({
     },
   });
 
-  // --- Delete task ---
   const { mutate: deleteTask, isPending: isDeleting } = useMutation({
     mutationFn: (taskId: string) =>
       deleteProjectTask(workspace?.id ?? "", projectId, taskId),
     onMutate: (taskId) => {
       setTasks((prev) => prev.filter((t) => t.id !== taskId));
+      const removeTask = (prev: ProjectTask[] | undefined) =>
+        prev?.filter((t) => t.id !== taskId) ?? [];
+      queryClient.setQueryData<ProjectTask[]>(["tasks", projectId], removeTask);
+      queryClient.setQueryData<ProjectTask[]>(
+        ["all-tasks", workspace?.id],
+        removeTask
+      );
+      queryClient.setQueryData<ProjectTask[]>(
+        ["my-tasks", workspace?.id],
+        removeTask
+      );
     },
     onSuccess: () => {
       toast.success("Issue deleted");
       queryClient.invalidateQueries({ queryKey: ["tasks", projectId] });
+      queryClient.invalidateQueries({ queryKey: ["all-tasks", workspace?.id] });
+      queryClient.invalidateQueries({ queryKey: ["my-tasks", workspace?.id] });
     },
     onError: () => {
       toast.error("Failed to delete issue");
       setTasks(projectTaskData ?? []);
+      queryClient.invalidateQueries({ queryKey: ["tasks", projectId] });
+      queryClient.invalidateQueries({ queryKey: ["all-tasks", workspace?.id] });
+      queryClient.invalidateQueries({ queryKey: ["my-tasks", workspace?.id] });
     },
     onSettled: () => {
       setTaskToDelete(null);
     },
   });
 
-  // --- DnD ---
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
   );
