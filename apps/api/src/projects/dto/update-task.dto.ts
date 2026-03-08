@@ -1,6 +1,6 @@
 import { ApiProperty } from "@nestjs/swagger";
 import {
-  IsDate,
+  IsDateString,
   IsEnum,
   IsInt,
   IsOptional,
@@ -10,10 +10,7 @@ import {
   Min,
   MinLength,
 } from "class-validator";
-
-export const TaskStatus = ["todo", "in_progress", "done"] as const;
-
-export type TaskStatus = (typeof TaskStatus)[number];
+import { TaskStatus } from "./create-task.dto";
 
 export class UpdateTaskDto {
   @ApiProperty({
@@ -27,8 +24,9 @@ export class UpdateTaskDto {
   name?: string;
 
   @ApiProperty({
-    description: "The status of the task (todo, in_progress, done)",
-    example: "todo",
+    description:
+      "The status of the task (backlog, planned, in_progress, completed, cancelled)",
+    example: "backlog",
   })
   @IsEnum(TaskStatus)
   @IsOptional()
@@ -40,7 +38,7 @@ export class UpdateTaskDto {
   })
   @IsInt()
   @Min(0)
-  @Max(2)
+  @Max(4)
   @IsOptional()
   priority?: number;
 
@@ -65,7 +63,7 @@ export class UpdateTaskDto {
     description: "The due date of the task",
     example: "2021-01-01",
   })
-  @IsDate()
+  @IsDateString()
   @IsOptional()
-  dueDate?: Date;
+  dueDate?: string;
 }

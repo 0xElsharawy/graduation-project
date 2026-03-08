@@ -57,10 +57,11 @@ export class ProjectsController {
 
   @Post(":projectId/tasks")
   async createTask(
+    @Param("workspaceId", ParseUUIDPipe) workspaceId: string,
     @Param("projectId", ParseUUIDPipe) projectId: string,
     @Body() body: CreateTaskDto
   ) {
-    return await this.projectsService.createTask(projectId, body);
+    return await this.projectsService.createTask(workspaceId, projectId, body);
   }
 
   @Get(":projectId/tasks")

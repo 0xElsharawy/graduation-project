@@ -1,6 +1,6 @@
 import { ApiProperty } from "@nestjs/swagger";
 import {
-  IsDate,
+  IsDateString,
   IsEnum,
   IsInt,
   IsNotEmpty,
@@ -56,17 +56,25 @@ export class CreateProjectDto {
 
   @ApiProperty({
     description: "The start date of the project",
-    example: "2020-01-01",
+    example: "2021-01-01",
   })
-  @IsDate()
+  @IsDateString()
   @IsOptional()
-  startDate?: Date;
+  startDate?: string;
 
   @ApiProperty({
     description: "The end date of the project",
-    example: "2020-01-01",
+    example: "2021-01-01",
   })
-  @IsDate()
+  @IsDateString()
   @IsOptional()
-  endDate?: Date;
+  endDate?: string;
+
+  @ApiProperty({
+    description: "The lead of the project",
+    example: "123e4567-e89b-12d3-a456-426614174000",
+  })
+  @IsString()
+  @IsOptional()
+  leadId?: string;
 }

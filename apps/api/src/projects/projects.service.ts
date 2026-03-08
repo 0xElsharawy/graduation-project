@@ -10,7 +10,7 @@ import { db } from "@/db";
 import { projects, tasks } from "@/db/schema/project";
 import { attempt } from "@/lib/error-handling";
 import { CreateProjectDto } from "./dto/create-project.dto";
-import { CreateTaskDto } from "./dto/create-task.dto";
+import { CreateTaskDto, TaskStatus } from "./dto/create-task.dto";
 import { UpdateProjectDto } from "./dto/update-project.dto";
 import { UpdateTaskDto } from "./dto/update-task.dto";
 
@@ -26,8 +26,9 @@ export class ProjectsService {
           status: body.status,
           workspaceId,
           priority: body.priority,
-          startDate: body.startDate,
-          endDate: body.endDate,
+          startDate: body.startDate ? new Date(body.startDate) : undefined,
+          endDate: body.endDate ? new Date(body.endDate) : undefined,
+          leadId: body.leadId,
         })
         .returning({ id: projects.id })
     );
@@ -88,6 +89,7 @@ export class ProjectsService {
           priority: body.priority,
           startDate: body.startDate ? new Date(body.startDate) : undefined,
           endDate: body.endDate ? new Date(body.endDate) : undefined,
+          leadId: body.leadId,
         })
         .where(eq(projects.id, projectId))
         .returning({ id: projects.id })
@@ -103,7 +105,11 @@ export class ProjectsService {
     return ok({ projectId: project?.[0]?.id });
   }
 
-  async createTask(projectId: string, body: CreateTaskDto) {
+  async createTask(
+    workspaceId: string,
+    projectId: string,
+    body: CreateTaskDto
+  ) {
     let dueDate: Date | undefined;
     if (body.dueDate) {
       dueDate = new Date(body.dueDate);
@@ -126,12 +132,12 @@ export class ProjectsService {
         .insert(tasks)
         .values({
           ...body,
+          workspaceId,
           projectId,
           dueDate: body.dueDate ? new Date(body.dueDate) : undefined,
         })
         .returning({ id: tasks.id })
     );
-    console.log(taskError);
     if (taskError) {
       throw new InternalServerErrorException("Failed to create task");
     }
@@ -140,7 +146,11 @@ export class ProjectsService {
 
   async listTasks(projectId: string) {
     const [taskList, taskListError] = await attempt(
-      db.select().from(tasks).where(eq(tasks.projectId, projectId))
+      db
+        .select()
+        .from(tasks)
+        .where(eq(tasks.projectId, projectId))
+        .orderBy(desc(tasks.priority), desc(tasks.createdAt))
     );
     if (taskListError) {
       throw new InternalServerErrorException("Failed to list tasks");
@@ -178,6 +188,7 @@ export class ProjectsService {
         .set({
           ...body,
           dueDate,
+          status: body.status as TaskStatus,
         })
         .where(eq(tasks.id, taskId))
     );
