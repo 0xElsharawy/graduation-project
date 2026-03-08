@@ -11,15 +11,13 @@ import IssuesTable from "@/app/[workspace]/_components/issues-table";
 import { Loading } from "@/components/loading";
 import { Button } from "@/components/ui/button";
 import { attempt } from "@/lib/error-handling";
-import { getProjectTasks } from "@/lib/projects";
-import { findWorkspaceBySlug } from "@/lib/workspace";
+import { findWorkspaceBySlug, getMyTasks } from "@/lib/workspace";
 
 type View = "list" | "board" | "calendar";
 
-export default function ProjectIssues() {
+export default function MyIssues() {
   const router = useRouter();
   const params = useParams();
-  const projectId = params.project as string;
   const slug = decodeURIComponent(params.workspace as string);
   const searchParams = useSearchParams();
 
@@ -49,19 +47,19 @@ export default function ProjectIssues() {
     },
   });
 
-  const { data: projectTaskData, isLoading } = useQuery({
-    queryKey: ["tasks", projectId],
+  const { data: myTasksData, isLoading } = useQuery({
+    queryKey: ["my-tasks", workspaceData?.id],
     queryFn: async () => {
-      const [projectTaskResult, projectTaskError] = await attempt(
-        getProjectTasks(workspaceData?.id ?? "", projectId)
+      const [myTasksResult, myTasksError] = await attempt(
+        getMyTasks(workspaceData?.id ?? "")
       );
-      if (projectTaskError || !projectTaskResult) {
-        toast.error("Error while fetching project tasks");
-        throw new Error("Failed to fetch project tasks");
+      if (myTasksError || !myTasksResult) {
+        toast.error("Error while fetching my tasks");
+        throw new Error("Failed to fetch my tasks");
       }
-      return projectTaskResult.data.tasks;
+      return myTasksResult.data.tasks;
     },
-    enabled: !!workspaceData?.id && !!projectId,
+    enabled: !!workspaceData?.id,
   });
 
   if (isWorkspaceLoading || isLoading) {
@@ -70,7 +68,7 @@ export default function ProjectIssues() {
 
   function changeView(next: View) {
     setView(next);
-    router.replace(`/${slug}/projects/${projectId}/issues?view=${next}`);
+    router.replace(`/${slug}/my-issues?view=${next}`);
   }
 
   return (
@@ -102,11 +100,9 @@ export default function ProjectIssues() {
         </Button>
       </div>
 
-      {view === "list" && <IssuesTable projectTaskData={projectTaskData} />}
-      {view === "board" && <IssuesKanban projectTaskData={projectTaskData} />}
-      {view === "calendar" && (
-        <IssuesCalendar projectTaskData={projectTaskData} />
-      )}
+      {view === "list" && <IssuesTable projectTaskData={myTasksData} />}
+      {view === "board" && <IssuesKanban projectTaskData={myTasksData} />}
+      {view === "calendar" && <IssuesCalendar projectTaskData={myTasksData} />}
     </div>
   );
 }

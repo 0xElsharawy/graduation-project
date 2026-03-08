@@ -46,6 +46,7 @@ import {
   type CreateProjectTaskData,
   createProjectTask,
   listProjects,
+  ProjectStatus,
 } from "@/lib/projects";
 import type { Workspace } from "@/lib/workspace";
 import StatusPriority from "./status-priority";
@@ -54,6 +55,7 @@ type CreateTaskDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   workspace: Workspace;
+  status?: ProjectStatus;
 };
 
 const schema = z.object({
@@ -77,6 +79,7 @@ export function CreateTaskDialog({
   open,
   onOpenChange,
   workspace,
+  status,
 }: CreateTaskDialogProps) {
   const { project } = useParams();
   const queryClient = useQueryClient();
@@ -89,13 +92,20 @@ export function CreateTaskDialog({
     defaultValues: {
       name: "",
       description: "",
-      status: "backlog",
+      status: status ?? "backlog",
       priority: 0,
       projectId: projectId || "",
       dueDate: undefined,
     },
     mode: "onChange",
   });
+
+  // Sync the status field whenever the dialog opens with a specific status
+  useEffect(() => {
+    if (open) {
+      form.setValue("status", status ?? "backlog");
+    }
+  }, [open, status, form]);
 
   const { data: projects } = useQuery({
     queryKey: ["projects", workspace.id],
@@ -118,7 +128,10 @@ export function CreateTaskDialog({
   const createMutation = useMutation({
     mutationFn: async (data: CreateProjectTaskData) => {
       const [result, error] = await attempt(
-        createProjectTask(workspace.id, data.projectId, data)
+        createProjectTask(workspace.id, data.projectId, {
+          ...data,
+          dueDate: data.dueDate ? new Date(data.dueDate) : undefined,
+        })
       );
       if (error || !result) {
         throw new Error("Failed to create issue");
@@ -127,8 +140,12 @@ export function CreateTaskDialog({
     },
     onSuccess: () => {
       toast.success("Issue created successfully");
+
       queryClient.invalidateQueries({ queryKey: ["projects", workspace.id] });
       queryClient.invalidateQueries({ queryKey: ["tasks", projectId] });
+      queryClient.invalidateQueries({ queryKey: ["all-tasks", workspace.id] });
+      queryClient.invalidateQueries({ queryKey: ["my-tasks", workspace.id] });
+
       form.reset();
       onOpenChange(false);
     },

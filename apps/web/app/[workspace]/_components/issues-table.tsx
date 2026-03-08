@@ -1,19 +1,7 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
-import {
-  CheckCircle2,
-  Circle,
-  CircleDashed,
-  CircleOff,
-  Clock,
-  SignalHigh as HighPriorityIcon,
-  SignalLow as LowPriorityIcon,
-  SignalMedium as MediumPriorityIcon,
-  Ellipsis as NoPriorityIcon,
-  Plus,
-  OctagonAlert as UrgentPriorityIcon,
-} from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { MoreHorizontal, Plus, Trash2 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -23,88 +11,45 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { attempt } from "@/lib/error-handling";
-import { type ProjectTask } from "@/lib/projects";
-import { getUser } from "@/lib/user";
+import {
+  deleteProjectTask,
+  type ProjectStatus,
+  type ProjectTask,
+} from "@/lib/projects";
 import { findWorkspaceBySlug } from "@/lib/workspace";
 import { CreateTaskDialog } from "../projects/_components/create-task-dialog";
+import {
+  formatDueDate,
+  getUsernameInitials,
+  priorityConfig,
+  statusConfig,
+} from "./issue-config";
 
-const statusConfig = [
-  {
-    value: "backlog",
-    label: "Backlog",
-    icon: <CircleDashed className="text-[#f2994a]" size={14} />,
-  },
-  {
-    value: "planned",
-    label: "Planned",
-    icon: <Circle className="text-[#d7d8db]" size={14} />,
-  },
-  {
-    value: "in_progress",
-    label: "In Progress",
-    icon: <Clock className="text-[#f0bf00]" size={14} />,
-  },
-  {
-    value: "completed",
-    label: "Completed",
-    icon: <CheckCircle2 className="text-[#5e6ad2]" size={14} />,
-  },
-  {
-    value: "cancelled",
-    label: "Cancelled",
-    icon: <CircleOff className="text-[#8a8f98]" size={14} />,
-  },
-] as const;
-
-const priorityConfig = [
-  {
-    value: 0,
-    label: "No priority",
-    icon: <NoPriorityIcon className="text-muted-foreground" size={14} />,
-  },
-  {
-    value: 1,
-    label: "Low",
-    icon: <LowPriorityIcon className="text-sky-500" size={14} />,
-  },
-  {
-    value: 2,
-    label: "Medium",
-    icon: <MediumPriorityIcon className="text-yellow-500" size={14} />,
-  },
-  {
-    value: 3,
-    label: "High",
-    icon: <HighPriorityIcon className="text-orange-500" size={14} />,
-  },
-  {
-    value: 4,
-    label: "Urgent",
-    icon: <UrgentPriorityIcon className="text-red-500" size={14} />,
-  },
-];
-
-function formatDueDate(date?: Date): string | null {
-  if (!date) {
-    return null;
-  }
-  const d = new Date(date);
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-}
-
-async function getUsernameInitials(id?: string): Promise<string> {
-  if (!id) {
-    return "?";
-  }
-  const [result, error] = await attempt(getUser(id));
-  if (error || !result) {
-    return "?";
-  }
-  return result.data.user.name?.slice(0, 2).toUpperCase() ?? "?";
-}
-
-function TaskRow({ task }: { task: ProjectTask }) {
+function TaskRow({
+  task,
+  onDeleteRequest,
+}: {
+  task: ProjectTask;
+  onDeleteRequest: (task: ProjectTask) => void;
+}) {
   const router = useRouter();
   const params = useParams();
   const workspaceId = params.workspace as string;
@@ -118,7 +63,7 @@ function TaskRow({ task }: { task: ProjectTask }) {
   const dueDate = formatDueDate(task.dueDate);
   const taskShortId = task.id.slice(0, 8).toUpperCase();
 
-  const handleClick = () => {
+  const handleNavigate = () => {
     router.push(`/${workspaceId}/projects/${projectId}/issues/${task.id}`);
   };
 
@@ -129,13 +74,14 @@ function TaskRow({ task }: { task: ProjectTask }) {
   }, [task.assigneeId]);
 
   return (
-    <button
-      className="group flex w-full cursor-pointer items-center justify-between border-border/50 border-b px-4 py-2 text-left transition-colors hover:bg-accent/40"
-      onClick={handleClick}
-      type="button"
-    >
-      <div className="flex min-w-0 items-center gap-3">
-        <span className="shrink-0 opacity-60 transition-opacity group-hover:opacity-100">
+    <div className="group flex items-center border-border/50 border-b transition-colors hover:bg-accent/40">
+      {/* Main clickable area */}
+      <button
+        className="flex min-w-0 flex-1 items-center gap-3 px-4 py-2 text-left"
+        onClick={handleNavigate}
+        type="button"
+      >
+        <span className="shrink-0 opacity-50 transition-opacity group-hover:opacity-100">
           {priority?.icon}
         </span>
         <span className="w-20 shrink-0 truncate font-mono text-muted-foreground text-xs">
@@ -143,17 +89,18 @@ function TaskRow({ task }: { task: ProjectTask }) {
         </span>
         <span className="shrink-0">{status?.icon}</span>
         <span className="truncate text-foreground text-sm">{task.name}</span>
-      </div>
+      </button>
 
-      <div className="ml-4 flex shrink-0 items-center gap-3">
+      <div className="flex shrink-0 items-center gap-3 pr-3">
         {dueDate !== null && (
           <span className="text-muted-foreground text-xs tabular-nums">
             {dueDate}
           </span>
         )}
+
         {task.assigneeId ? (
           <div
-            className="flex size-5 shrink-0 items-center justify-center rounded-sm bg-amber-500 text-white"
+            className="flex size-5 shrink-0 items-center justify-center rounded-full bg-amber-500 text-white"
             title={task.assigneeId}
           >
             <span className="font-semibold text-[10px] leading-none">
@@ -163,8 +110,32 @@ function TaskRow({ task }: { task: ProjectTask }) {
         ) : (
           <div className="size-5 shrink-0 rounded-sm border border-border border-dashed" />
         )}
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              className="flex size-6 items-center justify-center rounded text-muted-foreground opacity-0 transition-opacity hover:bg-accent hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100"
+              type="button"
+            >
+              <MoreHorizontal size={14} />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-44">
+            <DropdownMenuItem onClick={handleNavigate}>
+              Open issue
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={() => onDeleteRequest(task)}
+              variant="destructive"
+            >
+              <Trash2 size={14} />
+              Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
-    </button>
+    </div>
   );
 }
 
@@ -183,10 +154,18 @@ export default function IssuesTable({
 }: {
   projectTaskData: ProjectTask[] | undefined;
 }) {
-  const tasks = projectTaskData ?? [];
+  const [selectedStatus, setSelectedStatus] = useState<
+    ProjectStatus | undefined
+  >(undefined);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [taskToDelete, setTaskToDelete] = useState<ProjectTask | null>(null);
+
+  const tasks = projectTaskData ?? [];
   const params = useParams();
   const slug = decodeURIComponent(params.workspace as string);
+  const projectId = params.project as string;
+
+  const queryClient = useQueryClient();
 
   const { data: workspace, isLoading: isWorkspaceLoading } = useQuery({
     queryKey: ["workspace", slug],
@@ -199,6 +178,29 @@ export default function IssuesTable({
       return result?.data.workspace;
     },
     enabled: !!slug,
+  });
+
+  const { mutate: deleteTask, isPending: isDeleting } = useMutation({
+    mutationFn: (taskId: string) =>
+      deleteProjectTask(workspace?.id ?? "", projectId, taskId),
+    onMutate: (taskId) => {
+      // Optimistic: remove from query cache
+      queryClient.setQueryData<ProjectTask[]>(
+        ["tasks", projectId],
+        (prev) => prev?.filter((t) => t.id !== taskId) ?? []
+      );
+    },
+    onSuccess: () => {
+      toast.success("Issue deleted");
+      queryClient.invalidateQueries({ queryKey: ["tasks", projectId] });
+    },
+    onError: () => {
+      toast.error("Failed to delete issue");
+      queryClient.invalidateQueries({ queryKey: ["tasks", projectId] });
+    },
+    onSettled: () => {
+      setTaskToDelete(null);
+    },
   });
 
   if (isWorkspaceLoading || !workspace) {
@@ -232,7 +234,10 @@ export default function IssuesTable({
                 </AccordionTrigger>
                 <button
                   className="flex size-6 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                  onClick={() => setDialogOpen(true)}
+                  onClick={() => {
+                    setSelectedStatus(status.value);
+                    setDialogOpen(true);
+                  }}
                   title={`Add ${status.label} issue`}
                   type="button"
                 >
@@ -245,7 +250,11 @@ export default function IssuesTable({
                   <EmptyState label={status.label} />
                 ) : (
                   statusTasks.map((task) => (
-                    <TaskRow key={task.id} task={task} />
+                    <TaskRow
+                      key={task.id}
+                      onDeleteRequest={setTaskToDelete}
+                      task={task}
+                    />
                   ))
                 )}
               </AccordionContent>
@@ -253,11 +262,53 @@ export default function IssuesTable({
           );
         })}
       </Accordion>
+
       <CreateTaskDialog
-        onOpenChange={setDialogOpen}
+        onOpenChange={(open) => {
+          setDialogOpen(open);
+          if (!open) {
+            setSelectedStatus(undefined);
+          }
+        }}
         open={dialogOpen}
+        status={selectedStatus}
         workspace={workspace}
       />
+
+      <AlertDialog
+        onOpenChange={(open) => {
+          if (!open) {
+            setTaskToDelete(null);
+          }
+        }}
+        open={!!taskToDelete}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete issue?</AlertDialogTitle>
+            <AlertDialogDescription>
+              <span className="font-medium text-foreground">
+                {taskToDelete?.name}
+              </span>{" "}
+              will be permanently deleted. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={isDeleting}
+              onClick={() => {
+                if (taskToDelete) {
+                  deleteTask(taskToDelete.id);
+                }
+              }}
+              variant={"destructive"}
+            >
+              {isDeleting ? "Deleting…" : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

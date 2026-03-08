@@ -32,7 +32,7 @@ function getData(slug: string) {
       },
       {
         title: "My issues",
-        url: "#",
+        url: `/${encodeURIComponent(slug)}/my-issues`,
         icon: TrendingUp,
       },
       {
