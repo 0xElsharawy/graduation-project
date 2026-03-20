@@ -151,7 +151,7 @@ export class WorkspacesService {
 
     const [workspacesResult, workspacesError] = await attempt(
       db
-        .select({
+        .selectDistinct({
           id: workspaces.id,
           name: workspaces.name,
           slug: workspaces.slug,
@@ -177,7 +177,6 @@ export class WorkspacesService {
     if (workspacesError) {
       throw new InternalServerErrorException("Failed to get workspaces");
     }
-    console.log(workspacesResult);
     return ok({
       workspaces: workspacesResult ?? [],
       total: total?.[0]?.count,
@@ -202,7 +201,6 @@ export class WorkspacesService {
         )
         .limit(1)
     );
-    console.log(isAdmin);
     if (isAdminError) {
       throw new InternalServerErrorException(
         "Failed to check if user is admin"
