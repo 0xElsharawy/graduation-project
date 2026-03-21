@@ -244,7 +244,7 @@ function ProjectCard({
   return (
     <Link href={`${href}/${project.id}/overview`}>
       <Card className="group/card flex h-full cursor-pointer flex-col transition-colors hover:bg-accent/40">
-        <CardHeader className="pb-0">
+        <CardHeader className="mb-0 pb-0">
           <div className="flex items-start justify-between gap-2">
             <CardTitle className="line-clamp-1 font-semibold text-sm">
               {project.name}
@@ -277,14 +277,9 @@ function ProjectCard({
               </DropdownMenu>
             </div>
           </div>
-          {project.description ? (
-            <p className="mt-1 line-clamp-2 text-muted-foreground text-xs">
-              {project.description}
-            </p>
-          ) : null}
         </CardHeader>
 
-        <CardContent className="flex flex-1 flex-col justify-end gap-3 pt-4">
+        <CardContent className="flex flex-1 flex-col justify-end gap-3">
           <div className="flex flex-wrap gap-1.5">
             <span
               className={`inline-flex items-center gap-1 border px-2 py-0.5 text-xs ${status.className}`}
