@@ -78,7 +78,7 @@ export class BlueprintService {
             throw new InternalServerErrorException("Project not found");
           }
 
-          const prompt = this.buildPrompt(body);
+          const prompt = this.buildPrompt(project.name, body);
 
           const model = this.gemini.getGenerativeModel({
             model: this.geminiModel,
@@ -218,9 +218,12 @@ export class BlueprintService {
     return ok({ created: featureTasks.length });
   }
 
-  private buildPrompt(body: GenerateBlueprintDto): string {
+  private buildPrompt(
+    projectTitle: string,
+    body: GenerateBlueprintDto
+  ): string {
     return [
-      `SaaS idea title: ${body.title}`,
+      `Project title: ${projectTitle}`,
       `Description: ${body.description}`,
       "",
       "You MUST respond with a JSON object matching this TypeScript interface:",

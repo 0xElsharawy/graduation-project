@@ -3,15 +3,6 @@ import { IsNotEmpty, IsString, MaxLength } from "class-validator";
 
 export class GenerateBlueprintDto {
   @ApiProperty({
-    description: "High-level name or title for the SaaS idea",
-    example: "UGC Central",
-  })
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(200)
-  title: string;
-
-  @ApiProperty({
     description:
       "Detailed description of the SaaS idea, audience, and problem it solves",
     example:
