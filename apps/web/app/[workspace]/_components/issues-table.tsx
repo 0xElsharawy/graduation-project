@@ -252,13 +252,13 @@ export default function IssuesTable({
               value={`item-${index}`}
             >
               <div className="group flex items-stretch border-border/60 border-b bg-muted/20 transition-colors hover:bg-muted/40">
-                <div className="flex w-16 shrink-0 items-center justify-center border-border/40 border-r">
+                <div className="flex w-12 shrink-0 items-center justify-center border-border/40 border-r">
                   {status.icon}
                 </div>
 
-                <AccordionTrigger className="flex flex-1 items-center justify-between px-5 hover:no-underline [&[data-state=open]>svg]:rotate-180">
-                  <div className="flex items-baseline gap-4">
-                    <span className="font-medium font-serif tracking-tight">
+                <AccordionTrigger className="flex flex-1 items-center justify-between px-4 py-2 hover:no-underline [&[data-state=open]>svg]:rotate-180">
+                  <div className="flex items-baseline gap-3">
+                    <span className="font-serif tracking-tight">
                       {status.label}
                     </span>
                     <span className="rounded-full bg-foreground/10 px-2 py-0.5 font-bold font-mono text-[10px] text-foreground">
@@ -267,9 +267,9 @@ export default function IssuesTable({
                   </div>
                 </AccordionTrigger>
 
-                <div className="flex items-center border-border/40 border-l px-4">
+                <div className="flex items-center border-border/40 border-l px-3">
                   <button
-                    className="group/btn relative flex size-8 items-center justify-center overflow-hidden rounded border border-border bg-background shadow-sm transition-all hover:border-foreground hover:bg-foreground hover:text-background"
+                    className="group/btn relative flex size-6 items-center justify-center overflow-hidden rounded border border-border bg-background shadow-sm transition-all hover:border-foreground hover:bg-foreground hover:text-background"
                     onClick={() => {
                       setSelectedStatus(status.value);
                       setDialogOpen(true);
@@ -279,7 +279,7 @@ export default function IssuesTable({
                   >
                     <Plus
                       className="relative z-10 transition-transform group-hover/btn:rotate-90"
-                      size={14}
+                      size={12}
                     />
                   </button>
                 </div>
