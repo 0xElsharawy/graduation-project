@@ -2,7 +2,14 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AxiosError } from "axios";
-import { Loader2, Lock, ShieldCheck, Sparkles, Users } from "lucide-react";
+import {
+  ArrowUpRight,
+  Loader2,
+  Lock,
+  ShieldCheck,
+  Sparkles,
+  Users,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMemo } from "react";
 import { useForm } from "react-hook-form";
@@ -18,8 +25,9 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Separator } from "@/components/ui/separator";
+import type { OkResponse } from "@/lib/auth-fetch";
 import { attempt } from "@/lib/error-handling";
+import { cn } from "@/lib/utils";
 import { createWorkspace } from "@/lib/workspace";
 
 const schema = z.object({
@@ -31,6 +39,21 @@ const schema = z.object({
 });
 
 type WorkspaceFormValues = z.infer<typeof schema>;
+
+const roadmap = [
+  {
+    title: "Create",
+    body: "Name and slug define your workspace URL.",
+  },
+  {
+    title: "Invite",
+    body: "Add teammates with roles when you are ready.",
+  },
+  {
+    title: "Ship",
+    body: "Projects and issues start from a clean slate.",
+  },
+] as const;
 
 export function CreateWorkspaceForm() {
   const router = useRouter();
@@ -49,12 +72,10 @@ export function CreateWorkspaceForm() {
   const slugPreview = form.watch("slug") || "your-workspace";
 
   async function onSubmit(values: WorkspaceFormValues) {
-    const [data, error] = await attempt<
-      { workspaceId: string },
+    const [, error] = await attempt<
+      OkResponse<{ workspaceId: string }>,
       AxiosError<{ message: string }>
     >(createWorkspace(values.name, values.slug));
-    console.log(data);
-    console.log(error);
 
     if (error) {
       if (
@@ -74,157 +95,174 @@ export function CreateWorkspaceForm() {
   }
 
   return (
-    <div className="mx-auto grid max-w-6xl gap-8 lg:grid-cols-[2fr,1fr]">
-      <div className="rounded-2xl border bg-card/90 p-6 shadow-sm backdrop-blur">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="space-y-1.5">
-            <div className="flex flex-wrap items-center gap-2 font-medium text-xs">
-              <span className="rounded-full bg-primary/10 px-2.5 py-1 text-primary">
-                Quick setup
-              </span>
-              <span className="rounded-full border px-2.5 py-1 text-muted-foreground">
-                Secure by default
-              </span>
-            </div>
-            <p className="text-muted-foreground text-sm">
-              Spin up a workspace for your team in a few steps.
-            </p>
-            <h1 className="font-semibold text-2xl">Create workspace</h1>
-          </div>
-          <span className="rounded-full bg-primary/10 px-3 py-1 font-medium text-primary text-xs">
-            Step 1 of 1
-          </span>
-        </div>
-
-        <Separator className="my-6" />
-
-        <Form {...form}>
-          <form className="space-y-6" onSubmit={form.handleSubmit(onSubmit)}>
-            {form.formState.errors.root?.message ? (
-              <p className="text-destructive text-sm" key="error-message">
-                {form.formState.errors.root?.message}
+    <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_min(280px,34%)] lg:gap-10 xl:gap-14">
+      <div
+        className={cn(
+          "relative border border-foreground/10 bg-card/80 backdrop-blur-sm dark:bg-card/60",
+          "shadow-[6px_6px_0_0_oklch(0.58_0.14_48/0.22)] dark:shadow-[6px_6px_0_0_oklch(0.55_0.12_265/0.35)]",
+          "motion-safe:fade-in motion-safe:animate-in motion-safe:duration-500"
+        )}
+      >
+        <div
+          aria-hidden
+          className="absolute top-0 left-0 h-1 w-full bg-linear-to-r from-primary/0 via-primary/55 to-primary/0"
+        />
+        <div className="p-6 md:p-8">
+          <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
+            <div className="space-y-1">
+              <h2 className="font-(family-name:--font-ws-display) font-semibold text-lg tracking-tight md:text-xl">
+                Workspace details
+              </h2>
+              <p className="text-muted-foreground text-sm">
+                Two fields — display name and URL slug.
               </p>
-            ) : null}
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Workspace name</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Acme Design Studio" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="slug"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Workspace slug</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="acme"
-                      {...field}
-                      onChange={(event) =>
-                        field.onChange(
-                          event.target.value
-                            .toLowerCase()
-                            .replace(/[^a-z0-9-]/g, "-")
-                            .replace(/--+/g, "-")
-                            .replace(/^-+|-+$/g, "")
-                        )
-                      }
-                    />
-                  </FormControl>
-                  <p className="text-muted-foreground text-xs">
-                    Workspace URL: https://app.yourdomain.com/{slugPreview}
-                  </p>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-muted/40 px-4 py-3 text-sm">
-              <div className="text-muted-foreground">
-                You can invite teammates and set permissions after creating the
-                workspace.
-              </div>
-              <Button disabled={isSubmitting || !isValid} type="submit">
-                {isSubmitting ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : null}
-                Create workspace
-              </Button>
             </div>
+            <span className="border border-foreground/15 bg-muted/50 px-2 py-1 font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
+              ~30s
+            </span>
+          </div>
 
-            <div className="grid gap-3 rounded-xl border bg-linear-to-r from-primary/5 via-background to-background p-4 text-sm">
-              <div className="flex flex-wrap items-center gap-2 font-semibold text-primary text-xs uppercase">
-                <span className="rounded-full bg-primary/10 px-2 py-1 text-primary">
-                  Next up
-                </span>
-                <span className="text-muted-foreground">Preview the steps</span>
+          <Form {...form}>
+            <form className="space-y-8" onSubmit={form.handleSubmit(onSubmit)}>
+              {form.formState.errors.root?.message ? (
+                <div
+                  className="border border-destructive/40 bg-destructive/5 px-3 py-2 text-destructive text-sm"
+                  role="alert"
+                >
+                  {form.formState.errors.root.message}
+                </div>
+              ) : null}
+
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-foreground">
+                      Workspace name
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        className="h-10 text-sm"
+                        placeholder="Acme Design Studio"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="slug"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-foreground">URL slug</FormLabel>
+                    <FormControl>
+                      <Input
+                        className="h-10 font-mono text-sm"
+                        placeholder="acme"
+                        {...field}
+                        onChange={(event) =>
+                          field.onChange(
+                            event.target.value
+                              .toLowerCase()
+                              .replace(/[^a-z0-9-]/g, "-")
+                              .replace(/--+/g, "-")
+                              .replace(/^-+|-+$/g, "")
+                          )
+                        }
+                      />
+                    </FormControl>
+                    <div className="mt-2 border border-foreground/20 border-dashed bg-muted/40 px-2.5 py-2 font-mono text-[11px] text-muted-foreground">
+                      <span className="text-muted-foreground/80">Path </span>
+                      <span className="text-foreground">/{slugPreview}</span>
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="flex flex-col gap-4 border-foreground/10 border-t pt-6 sm:flex-row sm:items-center sm:justify-between">
+                <p className="max-w-sm text-muted-foreground text-sm">
+                  Nothing is shared until you invite people. You can tune roles
+                  right after this step.
+                </p>
+                <Button
+                  className="h-10 min-w-42 gap-2 border-foreground/20 bg-foreground text-background hover:bg-foreground/90 dark:bg-foreground dark:text-background"
+                  disabled={isSubmitting || !isValid}
+                  type="submit"
+                >
+                  {isSubmitting ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <ArrowUpRight className="size-4" />
+                  )}
+                  Create workspace
+                </Button>
               </div>
-              <div className="grid gap-2 sm:grid-cols-3">
-                <div className="rounded-lg border bg-card/60 p-3">
-                  <p className="font-medium">Create</p>
-                  <p className="text-muted-foreground text-sm">
-                    Name your workspace and set the slug.
-                  </p>
-                </div>
-                <div className="rounded-lg border bg-card/60 p-3">
-                  <p className="font-medium">Invite</p>
-                  <p className="text-muted-foreground text-sm">
-                    Add teammates with roles and permissions.
-                  </p>
-                </div>
-                <div className="rounded-lg border bg-card/60 p-3">
-                  <p className="font-medium">Ship</p>
-                  <p className="text-muted-foreground text-sm">
-                    Start projects with a clean slate and templates.
-                  </p>
-                </div>
+
+              <div className="grid gap-px border border-foreground/10 bg-foreground/10 sm:grid-cols-3">
+                {roadmap.map((step, i) => (
+                  <div
+                    className="bg-card/90 p-4 dark:bg-card/80"
+                    key={step.title}
+                  >
+                    <p className="font-mono text-[10px] text-muted-foreground">
+                      {String(i + 1).padStart(2, "0")}
+                    </p>
+                    <p className="mt-1 font-medium text-sm">{step.title}</p>
+                    <p className="mt-1 text-muted-foreground text-xs">
+                      {step.body}
+                    </p>
+                  </div>
+                ))}
               </div>
-            </div>
-          </form>
-        </Form>
+            </form>
+          </Form>
+        </div>
       </div>
 
-      <aside className="rounded-2xl border bg-linear-to-b from-muted/60 via-background to-muted/60 p-6 shadow-sm backdrop-blur">
-        <div className="flex items-center gap-2 font-medium text-sm">
-          <Sparkles className="h-4 w-4 text-primary" />
-          Workspace setup guide
+      <aside className="space-y-6 lg:sticky lg:top-8 lg:self-start">
+        <div className="border border-foreground/10 bg-muted/30 p-5 dark:bg-muted/20">
+          <div className="flex items-center gap-2 font-medium text-sm">
+            <Sparkles className="size-4 text-primary" />
+            What happens next
+          </div>
+          <ul className="mt-5 space-y-5 text-muted-foreground text-sm">
+            <li className="flex gap-3">
+              <ShieldCheck className="mt-0.5 size-4 shrink-0 text-primary" />
+              <div>
+                <p className="font-medium text-foreground">Role-ready</p>
+                <p>
+                  Owners, admins, and members stay organized with clear
+                  boundaries.
+                </p>
+              </div>
+            </li>
+            <li className="flex gap-3">
+              <Users className="mt-0.5 size-4 shrink-0 text-primary" />
+              <div>
+                <p className="font-medium text-foreground">Invite when ready</p>
+                <p>
+                  Send invites from the workspace once the shell exists — no
+                  rush.
+                </p>
+              </div>
+            </li>
+            <li className="flex gap-3">
+              <Lock className="mt-0.5 size-4 shrink-0 text-primary" />
+              <div>
+                <p className="font-medium text-foreground">Private first</p>
+                <p>
+                  Your space stays yours until you explicitly share work with
+                  the team.
+                </p>
+              </div>
+            </li>
+          </ul>
         </div>
-        <ul className="mt-4 space-y-4 text-muted-foreground text-sm">
-          <li className="flex gap-3">
-            <ShieldCheck className="mt-0.5 h-4 w-4 text-primary" />
-            <div>
-              <p className="font-medium text-foreground">Role-ready</p>
-              <p>
-                Keep owners, admins, and members organized with clear roles.
-              </p>
-            </div>
-          </li>
-          <li className="flex gap-3">
-            <Users className="mt-0.5 h-4 w-4 text-primary" />
-            <div>
-              <p className="font-medium text-foreground">Invite teammates</p>
-              <p>
-                Send invites once you create the workspace to start working.
-              </p>
-            </div>
-          </li>
-          <li className="flex gap-3">
-            <Lock className="mt-0.5 h-4 w-4 text-primary" />
-            <div>
-              <p className="font-medium text-foreground">Secure by default</p>
-              <p>Private until you decide to share projects with the team.</p>
-            </div>
-          </li>
-        </ul>
       </aside>
     </div>
   );
