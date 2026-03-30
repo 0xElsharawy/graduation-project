@@ -100,7 +100,7 @@ export default function MyIssues() {
         </Button>
       </div>
 
-      {view === "list" && <IssuesTable projectTaskData={myTasksData} />}
+      {view === "list" && <IssuesTable projectTasksData={myTasksData} />}
       {view === "board" && <IssuesKanban projectTaskData={myTasksData} />}
       {view === "calendar" && <IssuesCalendar projectTaskData={myTasksData} />}
     </div>
