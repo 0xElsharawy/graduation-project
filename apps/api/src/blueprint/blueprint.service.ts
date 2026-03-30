@@ -255,6 +255,7 @@ export class BlueprintService {
   }
 }`,
       "",
+      "The coreFeatures MUST be broken down into the smallest possible, actionable development tasks or features (e.g., 'Create user login API endpoint', 'Design database schema for users', 'Implement JWT authentication') rather than high-level epics.",
       "The ddl field MUST contain valid PostgreSQL DDL (CREATE TABLE statements) for the main entities of this SaaS.",
       "The userFlow field MUST contain nodes and edges formatted for @xyflow/react (React Flow) diagrams.",
       "Do not include any explanation outside of the JSON object.",

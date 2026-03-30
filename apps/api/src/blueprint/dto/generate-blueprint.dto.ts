@@ -10,6 +10,6 @@ export class GenerateBlueprintDto {
   })
   @IsString()
   @IsNotEmpty()
-  @MaxLength(4000)
+  @MaxLength(5000)
   description: string;
 }
