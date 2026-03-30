@@ -104,6 +104,7 @@ export function NavUser({
                   },
                 })
               }
+              variant="destructive"
             >
               <LogOut />
               Log out
