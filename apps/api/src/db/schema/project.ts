@@ -8,6 +8,7 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 import { users } from "./auth-schema";
+import { cycles } from "./cycle";
 import { workspaces } from "./workspace";
 
 export const projects = pgTable(
@@ -64,6 +65,9 @@ export const tasks = pgTable(
       .references(() => workspaces.id, { onDelete: "cascade" })
       .notNull(),
     assigneeId: text("assignee_id").references(() => users.id),
+    cycleId: uuid("cycle_id").references(() => cycles.id, {
+      onDelete: "set null",
+    }),
     status: text("status", {
       enum: ["backlog", "planned", "in_progress", "completed", "cancelled"],
     })
@@ -90,6 +94,10 @@ export const taskRelations = relations(tasks, ({ one }) => ({
   assignee: one(users, {
     fields: [tasks.assigneeId],
     references: [users.id],
+  }),
+  cycle: one(cycles, {
+    fields: [tasks.cycleId],
+    references: [cycles.id],
   }),
 }));
 

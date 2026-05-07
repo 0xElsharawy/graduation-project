@@ -1,6 +1,9 @@
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import {
+  boolean,
+  check,
   index,
+  integer,
   pgTable,
   serial,
   text,
@@ -8,21 +11,29 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 import { users } from "./auth-schema";
+import { cycles } from "./cycle";
 import { projects, tasks } from "./project";
 
-export const workspaces = pgTable("workspaces", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  name: text("name").notNull().unique(),
-  slug: text("slug").notNull().unique(),
-  ownerId: text("owner_id")
-    .references(() => users.id, { onDelete: "cascade" })
-    .notNull(),
-  accessedAt: timestamp("accessed_at").defaultNow().notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at")
-    .$onUpdate(() => /* @__PURE__ */ new Date())
-    .notNull(),
-});
+export const workspaces = pgTable(
+  "workspaces",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    name: text("name").notNull().unique(),
+    slug: text("slug").notNull().unique(),
+    ownerId: text("owner_id")
+      .references(() => users.id, { onDelete: "cascade" })
+      .notNull(),
+    cyclesEnabled: boolean("cycles_enabled").notNull().default(false),
+    cycleLengthDays: integer("cycle_length_days").notNull().default(14),
+    cyclesStartDate: timestamp("cycles_start_date"),
+    accessedAt: timestamp("accessed_at").defaultNow().notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+      .$onUpdate(() => /* @__PURE__ */ new Date())
+      .notNull(),
+  },
+  (t) => [check("cycle_length_days_check", sql`${t.cycleLengthDays} >= 1`)]
+);
 
 export const workspaceRelations = relations(workspaces, ({ many, one }) => ({
   members: many(workspaceMembers),
@@ -32,6 +43,7 @@ export const workspaceRelations = relations(workspaces, ({ many, one }) => ({
   }),
   projects: many(projects),
   tasks: many(tasks),
+  cycles: many(cycles),
 }));
 
 export const workspaceMembers = pgTable(
