@@ -1,5 +1,6 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import {
   Briefcase,
   Clock,
@@ -19,16 +20,18 @@ import {
 } from "@/components/ui/sidebar";
 import { WorkspaceSwitcher } from "@/components/workspace-switcher";
 import { authClient } from "@/lib/auth-client";
+import { getInboxUnreadCount } from "@/lib/inbox";
+import { findWorkspaceBySlug } from "@/lib/workspace";
 import { NavUser } from "./nav-user";
 
-function getData(slug: string) {
+function getData(slug: string, inboxUnreadCount?: number) {
   return {
     navMain: [
       {
         title: "Inbox",
-        url: "#",
+        url: `/${encodeURIComponent(slug)}/inbox`,
         icon: Inbox,
-        badge: 3,
+        badge: inboxUnreadCount || undefined,
       },
       {
         title: "My issues",
@@ -85,7 +88,24 @@ function getData(slug: string) {
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const params = useParams();
   const slug = decodeURIComponent(params.workspace as string);
-  const { navMain } = getData(slug);
+  const { data: workspace } = useQuery({
+    queryKey: ["workspace", slug],
+    enabled: !!slug,
+    queryFn: async () => {
+      const result = await findWorkspaceBySlug(slug);
+      return result.data.workspace;
+    },
+  });
+  const { data: inboxCount } = useQuery({
+    queryKey: ["inbox-count", workspace?.id],
+    enabled: !!workspace?.id,
+    refetchInterval: 15_000,
+    queryFn: async () => {
+      const result = await getInboxUnreadCount(workspace?.id ?? "");
+      return result.data;
+    },
+  });
+  const { navMain } = getData(slug, inboxCount?.unread);
   const { data: session, isPending: isSessionPending } =
     authClient.useSession();
 

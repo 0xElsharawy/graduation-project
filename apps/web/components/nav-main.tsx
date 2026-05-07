@@ -83,6 +83,11 @@ function SimpleNavItem({ item }: { item: NavItem }) {
             />
           ) : null}
           <span className="flex-1">{item.title}</span>
+          {item.badge ? (
+            <span className="ml-auto rounded-none bg-sidebar-primary px-1.5 py-0.5 text-[10px] text-sidebar-primary-foreground">
+              {item.badge}
+            </span>
+          ) : null}
         </Link>
       </SidebarMenuButton>
     </SidebarMenuItem>
@@ -174,6 +179,11 @@ function CollapsibleSubItem({ subItem }: { subItem: NavSubItem }) {
             />
           ) : null}
           <span className="flex-1">{subItem.title}</span>
+          {subItem.badge ? (
+            <span className="ml-auto rounded-none bg-sidebar-primary px-1.5 py-0.5 text-[10px] text-sidebar-primary-foreground">
+              {subItem.badge}
+            </span>
+          ) : null}
         </Link>
       </SidebarMenuSubButton>
     </SidebarMenuSubItem>

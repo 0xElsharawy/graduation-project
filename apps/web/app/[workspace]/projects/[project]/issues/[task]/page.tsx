@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { Calendar as CalendarIcon, Clock3, Gauge, User } from "lucide-react";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Loading } from "@/components/loading";
@@ -37,6 +37,7 @@ import {
 import { findWorkspaceBySlug } from "@/lib/workspace";
 import { AssignUserPopover } from "../../../../../../components/assign-user-popover";
 import StatusPriority from "../../../_components/status-priority";
+import { CommentsSection } from "./_components/comments-section";
 
 const NO_CYCLE_VALUE = "no-cycle";
 
@@ -62,9 +63,11 @@ function PropertyRow({
 
 export default function TaskPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const projectId = params.project as string;
   const taskId = params.task as string;
   const slug = decodeURIComponent(params.workspace as string);
+  const highlightCommentId = searchParams.get("commentId");
 
   const [taskName, setTaskName] = useState("");
   const [description, setDescription] = useState("");
@@ -378,6 +381,15 @@ export default function TaskPage() {
         placeholder="Add a task description..."
         value={description}
       />
+
+      {workspaceData?.id && (
+        <CommentsSection
+          highlightCommentId={highlightCommentId}
+          projectId={projectId}
+          taskId={taskId}
+          workspaceId={workspaceData.id}
+        />
+      )}
     </div>
   );
 }
