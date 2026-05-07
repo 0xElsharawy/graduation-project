@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { useSetAtom } from "jotai";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Clock3 } from "lucide-react";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -40,8 +40,20 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { projectsDataAtom } from "@/lib/atoms/projects-data";
+import {
+  getCurrentCycle,
+  getCycleSettings,
+  getUpcomingCycle,
+} from "@/lib/cycles";
 import { attempt } from "@/lib/error-handling";
 import {
   type CreateProjectTaskData,
@@ -57,7 +69,10 @@ type CreateTaskDialogProps = {
   onOpenChange: (open: boolean) => void;
   workspace: Workspace;
   status?: ProjectStatus;
+  defaultCycleId?: string | null;
 };
+
+const NO_CYCLE_VALUE = "no-cycle";
 
 const schema = z.object({
   name: z.string().min(1, "Issue name is required"),
@@ -73,6 +88,7 @@ const schema = z.object({
   projectId: z.string().min(1, "Project is required"),
   dueDate: z.date().nullable().optional(),
   assigneeId: z.string().nullable().optional(),
+  cycleId: z.string().nullable().optional(),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -82,6 +98,7 @@ export function CreateTaskDialog({
   onOpenChange,
   workspace,
   status,
+  defaultCycleId,
 }: CreateTaskDialogProps) {
   const { project } = useParams();
   const queryClient = useQueryClient();
@@ -100,6 +117,7 @@ export function CreateTaskDialog({
       projectId: projectId || "",
       dueDate: undefined,
       assigneeId,
+      cycleId: defaultCycleId ?? null,
     },
     mode: "onChange",
   });
@@ -108,8 +126,9 @@ export function CreateTaskDialog({
   useEffect(() => {
     if (open) {
       form.setValue("status", status ?? "backlog");
+      form.setValue("cycleId", defaultCycleId ?? null);
     }
-  }, [open, status, form]);
+  }, [open, status, defaultCycleId, form]);
 
   const { data: projects } = useQuery({
     queryKey: ["projects", workspace.id],
@@ -121,6 +140,42 @@ export function CreateTaskDialog({
       return result.data.projects;
     },
     enabled: !!workspace.id,
+  });
+
+  const { data: cycleSettings } = useQuery({
+    queryKey: ["cycle-settings", workspace.id],
+    queryFn: async () => {
+      const [result, error] = await attempt(getCycleSettings(workspace.id));
+      if (error || !result) {
+        return;
+      }
+      return result.data;
+    },
+    enabled: !!workspace.id && open,
+  });
+
+  const { data: currentCycleData } = useQuery({
+    queryKey: ["cycle", workspace.id, "current"],
+    queryFn: async () => {
+      const [result, error] = await attempt(getCurrentCycle(workspace.id));
+      if (error || !result) {
+        return;
+      }
+      return result.data;
+    },
+    enabled: !!workspace.id && open && cycleSettings?.enabled === true,
+  });
+
+  const { data: upcomingCycleData } = useQuery({
+    queryKey: ["cycle", workspace.id, "upcoming"],
+    queryFn: async () => {
+      const [result, error] = await attempt(getUpcomingCycle(workspace.id));
+      if (error || !result) {
+        return;
+      }
+      return result.data;
+    },
+    enabled: !!workspace.id && open && cycleSettings?.enabled === true,
   });
 
   useEffect(() => {
@@ -149,6 +204,7 @@ export function CreateTaskDialog({
       queryClient.invalidateQueries({ queryKey: ["tasks", projectId] });
       queryClient.invalidateQueries({ queryKey: ["all-tasks", workspace.id] });
       queryClient.invalidateQueries({ queryKey: ["my-tasks", workspace.id] });
+      queryClient.invalidateQueries({ queryKey: ["cycle", workspace.id] });
 
       form.reset();
       onOpenChange(false);
@@ -167,6 +223,7 @@ export function CreateTaskDialog({
       projectId: data.projectId,
       dueDate: data.dueDate ?? undefined,
       assigneeId: assigneeId ?? undefined,
+      cycleId: data.cycleId ?? undefined,
     });
   }
 
@@ -174,6 +231,15 @@ export function CreateTaskDialog({
     setAssigneeId(userId ?? undefined);
     form.setValue("assigneeId", userId ?? undefined);
   }
+
+  const cycleOptions = [
+    currentCycleData?.cycle,
+    upcomingCycleData?.cycle,
+  ].flatMap((cycle) => (cycle ? [cycle] : []));
+  const uniqueCycleOptions = cycleOptions.filter(
+    (cycle, index, allCycles) =>
+      allCycles.findIndex((item) => item.id === cycle.id) === index
+  );
 
   return (
     <Dialog onOpenChange={onOpenChange} open={open}>
@@ -228,6 +294,54 @@ export function CreateTaskDialog({
                   onAssign={handleAssigneeChange}
                   workspaceId={workspace.id}
                 />
+                {cycleSettings?.enabled ? (
+                  <FormField
+                    control={form.control}
+                    name="cycleId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormControl>
+                          <Select
+                            onValueChange={(value) =>
+                              field.onChange(
+                                value === NO_CYCLE_VALUE ? null : value
+                              )
+                            }
+                            value={field.value ?? NO_CYCLE_VALUE}
+                          >
+                            <SelectTrigger className="h-8 w-auto" size="sm">
+                              <SelectValue
+                                placeholder={
+                                  <div className="flex items-center gap-2">
+                                    <Clock3 className="size-4" />
+                                    <span>Cycle</span>
+                                  </div>
+                                }
+                              />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value={NO_CYCLE_VALUE}>
+                                <div className="flex items-center gap-2">
+                                  <Clock3 className="size-4" />
+                                  <span>No cycle</span>
+                                </div>
+                              </SelectItem>
+                              {uniqueCycleOptions.map((cycle) => (
+                                <SelectItem key={cycle.id} value={cycle.id}>
+                                  <div className="flex items-center gap-2">
+                                    <Clock3 className="size-4" />
+                                    <span>{cycle.name}</span>
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                ) : null}
                 <FormField
                   control={form.control}
                   name="dueDate"

@@ -1,3 +1,5 @@
+import { CycleView } from "../_components/cycle-view";
+
 export default function UpcomingCycles() {
-  return <div>UpcomingCycles</div>;
+  return <CycleView kind="upcoming" />;
 }

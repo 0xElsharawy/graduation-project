@@ -149,8 +149,10 @@ function EmptyState({ label }: { label: string }) {
 
 export default function IssuesTable({
   projectTasksData: projectTaskData,
+  defaultCycleId,
 }: {
   projectTasksData: ProjectTask[] | undefined;
+  defaultCycleId?: string | null;
 }) {
   const [selectedStatus, setSelectedStatus] = useState<
     ProjectStatus | undefined
@@ -286,6 +288,7 @@ export default function IssuesTable({
       </Accordion>
 
       <CreateTaskDialog
+        defaultCycleId={defaultCycleId}
         onOpenChange={(open) => {
           setDialogOpen(open);
           if (!open) {

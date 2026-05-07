@@ -237,8 +237,10 @@ function KanbanColumn({
 
 export default function IssuesKanban({
   projectTaskData,
+  defaultCycleId,
 }: {
   projectTaskData: ProjectTask[] | undefined;
+  defaultCycleId?: string | null;
 }) {
   const [tasks, setTasks] = useState<ProjectTask[]>(projectTaskData ?? []);
   const [activeTask, setActiveTask] = useState<ProjectTask | null>(null);
@@ -429,6 +431,7 @@ export default function IssuesKanban({
       </DndContext>
 
       <CreateTaskDialog
+        defaultCycleId={defaultCycleId}
         onOpenChange={(open) => {
           setDialogOpen(open);
           if (!open) {

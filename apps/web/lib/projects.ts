@@ -113,6 +113,7 @@ export type ProjectTask = {
   assigneeEmail?: string | null;
   dueDate?: Date | null;
   priority: number;
+  cycleId?: string | null;
   createdAt: Date | null;
 };
 
@@ -124,6 +125,7 @@ export type CreateProjectTaskData = {
   description?: string | null;
   assigneeId?: string;
   dueDate?: Date;
+  cycleId?: string | null;
 };
 
 export const createProjectTask = async (
@@ -175,6 +177,7 @@ export type UpdateProjectTaskData = {
   priority?: number;
   dueDate?: Date;
   assigneeId?: string;
+  cycleId?: string | null;
 };
 
 export const updateProjectTask = async (

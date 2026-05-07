@@ -1,3 +1,5 @@
+import { CycleView } from "../_components/cycle-view";
+
 export default function CurrentCycles() {
-  return <div>CurrentCycles</div>;
+  return <CycleView kind="current" />;
 }

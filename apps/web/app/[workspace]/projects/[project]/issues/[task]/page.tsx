@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { Calendar as CalendarIcon, Gauge, User } from "lucide-react";
+import { Calendar as CalendarIcon, Clock3, Gauge, User } from "lucide-react";
 import { useParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -14,7 +14,19 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  getCurrentCycle,
+  getCycleSettings,
+  getUpcomingCycle,
+} from "@/lib/cycles";
 import { attempt } from "@/lib/error-handling";
 import {
   getProjectTask,
@@ -25,6 +37,8 @@ import {
 import { findWorkspaceBySlug } from "@/lib/workspace";
 import { AssignUserPopover } from "../../../../../../components/assign-user-popover";
 import StatusPriority from "../../../_components/status-priority";
+
+const NO_CYCLE_VALUE = "no-cycle";
 
 function PropertyRow({
   icon,
@@ -64,6 +78,7 @@ export default function TaskPage() {
   const [selectedAssignee, setSelectedAssignee] = useState<
     string | undefined
   >();
+  const [selectedCycleId, setSelectedCycleId] = useState<string | null>(null);
 
   const isInitialized = useRef(false);
   const queryClient = useQueryClient();
@@ -96,6 +111,48 @@ export default function TaskPage() {
     },
   });
 
+  const { data: cycleSettings } = useQuery({
+    queryKey: ["cycle-settings", workspaceData?.id],
+    queryFn: async () => {
+      const [result, error] = await attempt(
+        getCycleSettings(workspaceData?.id ?? "")
+      );
+      if (error || !result) {
+        return;
+      }
+      return result.data;
+    },
+    enabled: !!workspaceData?.id,
+  });
+
+  const { data: currentCycleData } = useQuery({
+    queryKey: ["cycle", workspaceData?.id, "current"],
+    queryFn: async () => {
+      const [result, error] = await attempt(
+        getCurrentCycle(workspaceData?.id ?? "")
+      );
+      if (error || !result) {
+        return;
+      }
+      return result.data;
+    },
+    enabled: !!workspaceData?.id && cycleSettings?.enabled === true,
+  });
+
+  const { data: upcomingCycleData } = useQuery({
+    queryKey: ["cycle", workspaceData?.id, "upcoming"],
+    queryFn: async () => {
+      const [result, error] = await attempt(
+        getUpcomingCycle(workspaceData?.id ?? "")
+      );
+      if (error || !result) {
+        return;
+      }
+      return result.data;
+    },
+    enabled: !!workspaceData?.id && cycleSettings?.enabled === true,
+  });
+
   useEffect(() => {
     if (!taskData) {
       return;
@@ -107,6 +164,7 @@ export default function TaskPage() {
     setSelectedPriority(taskData.priority);
     setDueDate(taskData.dueDate ? new Date(taskData.dueDate) : undefined);
     setSelectedAssignee(taskData.assigneeId ?? undefined);
+    setSelectedCycleId(taskData.cycleId ?? null);
     setTimeout(() => {
       isInitialized.current = true;
     }, 0);
@@ -134,6 +192,7 @@ export default function TaskPage() {
       queryClient.invalidateQueries({
         queryKey: ["my-tasks", workspaceData?.id],
       });
+      queryClient.invalidateQueries({ queryKey: ["cycle", workspaceData?.id] });
     },
     onError: () => {
       toast.error("Failed to update task");
@@ -167,6 +226,23 @@ export default function TaskPage() {
       assigneeId: userId ?? undefined,
     });
   };
+
+  const handleCycleChange = (value: string) => {
+    const nextCycleId = value === NO_CYCLE_VALUE ? null : value;
+    setSelectedCycleId(nextCycleId);
+    updateMutation.mutate({
+      cycleId: nextCycleId,
+    });
+  };
+
+  const cycleOptions = [
+    currentCycleData?.cycle,
+    upcomingCycleData?.cycle,
+  ].flatMap((cycle) => (cycle ? [cycle] : []));
+  const uniqueCycleOptions = cycleOptions.filter(
+    (cycle, index, allCycles) =>
+      allCycles.findIndex((item) => item.id === cycle.id) === index
+  );
 
   useEffect(() => {
     if (!isInitialized.current) {
@@ -260,6 +336,39 @@ export default function TaskPage() {
             onAssign={handleAssigneeChange}
             workspaceId={workspaceData?.id ?? ""}
           />
+        </PropertyRow>
+
+        <PropertyRow icon={<Clock3 className="size-4" />} label="Cycle">
+          {cycleSettings?.enabled ? (
+            <Select
+              onValueChange={handleCycleChange}
+              value={selectedCycleId ?? NO_CYCLE_VALUE}
+            >
+              <SelectTrigger className="h-8 w-auto" size="sm">
+                <SelectValue placeholder="No cycle" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={NO_CYCLE_VALUE}>
+                  <div className="flex items-center gap-2">
+                    <Clock3 className="size-4" />
+                    <span>No cycle</span>
+                  </div>
+                </SelectItem>
+                {uniqueCycleOptions.map((cycle) => (
+                  <SelectItem key={cycle.id} value={cycle.id}>
+                    <div className="flex items-center gap-2">
+                      <Clock3 className="size-4" />
+                      <span>{cycle.name}</span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : (
+            <span className="text-muted-foreground text-sm">
+              Cycles are disabled
+            </span>
+          )}
         </PropertyRow>
       </div>
 
