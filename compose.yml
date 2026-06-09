@@ -1,0 +1,42 @@
+x-defaults: &default-service
+  restart: no
+  networks:
+    - planova-net
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    <<: *default-service
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: graduation
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    <<: *default-service
+    ports:
+      - "5000:5000"
+    env_file:
+      - ./apps/api/.env.docker
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+
+networks:
+  planova-net:
+    driver: bridge
