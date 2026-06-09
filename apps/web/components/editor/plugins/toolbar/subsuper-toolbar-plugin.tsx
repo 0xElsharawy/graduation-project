@@ -16,9 +16,7 @@ export function SubSuperToolbarPlugin() {
 
   const $updateToolbar = (selection: BaseSelection) => {
     if ($isRangeSelection(selection) || $isTableSelection(selection)) {
-      // @ts-expect-error
       setIsSubscript(selection.hasFormat("subscript"));
-      // @ts-expect-error
       setIsSuperscript(selection.hasFormat("superscript"));
     }
   };
