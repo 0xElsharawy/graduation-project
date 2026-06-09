@@ -1,4 +1,8 @@
 /** @type {import('next').NextConfig} */
-const nextConfig = {};
+const nextConfig = {
+  fonts: {
+    disableGoogleFonts: true,
+  },
+};
 
 export default nextConfig;
