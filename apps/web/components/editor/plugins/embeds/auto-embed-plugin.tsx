@@ -74,11 +74,11 @@ export const YoutubeEmbedConfig: CustomEmbedConfig = {
     const match =
       /^.*(youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/.exec(url);
 
-    const id = match ? (match?.[2].length === 11 ? match[2] : null) : null;
+    const videoId = match?.[2];
 
-    if (id != null) {
+    if (videoId?.length === 11) {
       return {
-        id,
+        id: videoId,
         url,
       };
     }
@@ -113,10 +113,12 @@ export const TwitterEmbedConfig: CustomEmbedConfig = {
         text
       );
 
-    if (match != null) {
+    const id = match?.[5];
+
+    if (id) {
       return {
-        id: match[5],
-        url: match[1],
+        id,
+        url: text,
       };
     }
 
