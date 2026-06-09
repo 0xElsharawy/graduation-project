@@ -33,11 +33,16 @@ export function FormatCodeBlock() {
     }
   };
 
+  const block = blockTypeToBlockName[BLOCK_FORMAT_VALUE];
+  if (!block) {
+    return null;
+  }
+
   return (
     <SelectItem onPointerDown={formatCode} value="code">
       <div className="flex items-center gap-1 font-normal">
-        {blockTypeToBlockName[BLOCK_FORMAT_VALUE].icon}
-        {blockTypeToBlockName[BLOCK_FORMAT_VALUE].label}
+        {block.icon}
+        {block.label}
       </div>
     </SelectItem>
   );

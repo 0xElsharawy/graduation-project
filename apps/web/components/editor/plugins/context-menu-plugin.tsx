@@ -73,9 +73,11 @@ export function ContextMenuPlugin(): JSX.Element {
               return;
             }
 
-            for (const type of item.types) {
-              const dataString = await (await item.getType(type)).text();
-              data.setData(type, dataString);
+            if (item) {
+              for (const type of item.types) {
+                const dataString = await (await item.getType(type)).text();
+                data.setData(type, dataString);
+              }
             }
 
             const event = new ClipboardEvent("paste", {

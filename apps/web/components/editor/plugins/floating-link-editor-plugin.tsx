@@ -341,7 +341,7 @@ function useFloatingLinkEditorToolbar(
           return;
         }
         const node = nodes[0];
-        const parent = node.getParent();
+        const parent = node?.getParent();
         if ($isLinkNode(parent) || $isLinkNode(node)) {
           setIsLink(true);
         } else {

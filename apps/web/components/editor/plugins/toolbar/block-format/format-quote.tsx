@@ -20,11 +20,14 @@ export function FormatQuote() {
     }
   };
 
+  const block = blockTypeToBlockName[BLOCK_FORMAT_VALUE];
+  if (!block) return null;
+
   return (
     <SelectItem onPointerDown={formatQuote} value="quote">
       <div className="flex items-center gap-1 font-normal">
-        {blockTypeToBlockName[BLOCK_FORMAT_VALUE].icon}
-        {blockTypeToBlockName[BLOCK_FORMAT_VALUE].label}
+        {block.icon}
+        {block.label}
       </div>
     </SelectItem>
   );

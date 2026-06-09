@@ -40,8 +40,12 @@ export function DynamicTablePickerPlugin({
           new ComponentPickerOption(`${rows}x${columns} Table`, {
             icon: <i className="icon table" />,
             keywords: ["table"],
-            onSelect: (_, editor) =>
-              editor.dispatchCommand(INSERT_TABLE_COMMAND, { columns, rows }),
+            onSelect: (_, editor) => {
+              if (columns == null || rows == null) {
+                return;
+              }
+              editor.dispatchCommand(INSERT_TABLE_COMMAND, { columns, rows });
+            },
           })
       )
     );

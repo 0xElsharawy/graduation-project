@@ -115,7 +115,10 @@ export function InsertImageUploadedDialogBody({
       return "";
     };
     if (files !== null) {
-      reader.readAsDataURL(files[0]);
+      const file = files[0];
+      if (file) {
+        reader.readAsDataURL(file);
+      }
     }
   };
 

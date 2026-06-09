@@ -59,6 +59,9 @@ export async function docFromHash(
   }
   const ds = new DecompressionStream("gzip");
   const writer = ds.writable.getWriter();
+  if (!m[1]) {
+    return null;
+  }
   const b64 = atob(m[1].replace(/_/g, "/").replace(/-/g, "+"));
   const array = new Uint8Array(b64.length);
   for (let i = 0; i < b64.length; i++) {

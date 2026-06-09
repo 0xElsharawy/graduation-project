@@ -1,16 +1,17 @@
 x-defaults: &default-service
-  restart: no
+  restart: unless-stopped
   networks:
     - planova-net
 
 services:
   postgres:
     image: postgres:16-alpine
+    container_name: planova-postgres
     <<: *default-service
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: graduation
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "password"
+      POSTGRES_DB: "graduation"
     ports:
       - "5432:5432"
     volumes:
@@ -24,7 +25,8 @@ services:
   api:
     build:
       context: .
-      dockerfile: apps/api/Dockerfile
+      dockerfile: ./apps/api/Dockerfile
+    container_name: planova-api
     <<: *default-service
     ports:
       - "5000:5000"
@@ -33,6 +35,20 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+
+  web:
+    build:
+      context: .
+      dockerfile: ./apps/web/Dockerfile
+    container_name: planova-web
+    <<: *default-service
+    ports:
+      - "3000:3000"
+    env_file:
+      - ./apps/web/.env.docker
+    depends_on:
+      api:
+        condition: service_started
 
 volumes:
   postgres_data:

@@ -86,6 +86,7 @@ export const TABLE: ElementTransformer = {
   regExp: TABLE_ROW_REG_EXP,
   replace: (parentNode, _1, match) => {
     // Header row
+    if (!match[0]) return;
     if (TABLE_ROW_DIVIDER_REG_EXP.test(match[0])) {
       const table = parentNode.getPreviousSibling();
       if (!(table && $isTableNode(table))) {
@@ -159,7 +160,7 @@ export const TABLE: ElementTransformer = {
       table.append(tableRow);
 
       for (let i = 0; i < maxCells; i++) {
-        tableRow.append(i < cells.length ? cells[i] : $createTableCell(""));
+        tableRow.append(i < cells.length ? cells[i]! : $createTableCell(""));
       }
     }
 

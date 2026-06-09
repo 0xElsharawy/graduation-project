@@ -18,16 +18,22 @@ export function FormatHeading({ levels = [] }: { levels: HeadingTagType[] }) {
     }
   };
 
-  return levels.map((level) => (
-    <SelectItem
-      key={level}
-      onPointerDown={() => formatHeading(level)}
-      value={level}
-    >
-      <div className="flex items-center gap-1 font-normal">
-        {blockTypeToBlockName[level].icon}
-        {blockTypeToBlockName[level].label}
-      </div>
-    </SelectItem>
-  ));
+  return levels.map((level) => {
+    const data = blockTypeToBlockName[level];
+
+    if (!data) return null;
+
+    return (
+      <SelectItem
+        key={level}
+        onPointerDown={() => formatHeading(level)}
+        value={level}
+      >
+        <div className="flex items-center gap-1 font-normal">
+          {data.icon}
+          {data.label}
+        </div>
+      </SelectItem>
+    );
+  });
 }
