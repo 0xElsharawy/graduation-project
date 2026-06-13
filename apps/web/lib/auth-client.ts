@@ -1,8 +1,8 @@
 import { createAuthClient } from "better-auth/react";
-import { BACKEND_URL } from "./constants";
+import { PUBLIC_APP_URL } from "./constants";
 
 export const authClient: ReturnType<typeof createAuthClient> = createAuthClient(
   {
-    baseURL: `${BACKEND_URL}/auth`,
+    baseURL: `${PUBLIC_APP_URL}/auth`,
   }
 );
