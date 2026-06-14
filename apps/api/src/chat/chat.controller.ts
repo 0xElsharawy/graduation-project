@@ -5,16 +5,31 @@ import {
   Get,
   Param,
   ParseUUIDPipe,
+  Patch,
   Post,
 } from "@nestjs/common";
 import { ApiCookieAuth } from "@nestjs/swagger";
 import { Session, type UserSession } from "@thallesp/nestjs-better-auth";
 import { ChatService } from "./chat.service";
+import { CreateChannelDto } from "./dto/create-channel.dto";
+import { CreateDmDto } from "./dto/create-dm.dto";
+import { CreateMessageDto } from "./dto/create-message.dto";
+import { UpdateChannelDto } from "./dto/update-channel.dto";
+import { UpdateMessageDto } from "./dto/update-message.dto";
+import { UploadAttachmentDto } from "./dto/upload-attachment.dto";
 
 @ApiCookieAuth()
-@Controller("/workspaces/:workspaceId/chat")
+@Controller("workspaces/:workspaceId/chat")
 export class ChatController {
   constructor(private readonly chatService: ChatService) {}
+
+  @Get("threads")
+  async listThreads(
+    @Param("workspaceId", ParseUUIDPipe) workspaceId: string,
+    @Session() session: UserSession
+  ) {
+    return await this.chatService.listThreads(workspaceId, session.user.id);
+  }
 
   @Get("channels")
   async listChannels(
@@ -28,116 +43,176 @@ export class ChatController {
   async createChannel(
     @Param("workspaceId", ParseUUIDPipe) workspaceId: string,
     @Session() session: UserSession,
-    @Body() body: any
+    @Body() dto: CreateChannelDto
   ) {
     return await this.chatService.createChannel(
       workspaceId,
       session.user.id,
-      body
+      dto
     );
   }
 
-  @Get("channels/:channelId/messages")
+  @Patch("channels/:channelId")
+  async updateChannel(
+    @Param("workspaceId", ParseUUIDPipe) workspaceId: string,
+    @Param("channelId", ParseUUIDPipe) channelId: string,
+    @Session() session: UserSession,
+    @Body() dto: UpdateChannelDto
+  ) {
+    return await this.chatService.updateChannel(
+      workspaceId,
+      channelId,
+      session.user.id,
+      dto
+    );
+  }
+
+  @Post("channels/:channelId/join")
+  async joinChannel(
+    @Param("workspaceId", ParseUUIDPipe) workspaceId: string,
+    @Param("channelId", ParseUUIDPipe) channelId: string,
+    @Session() session: UserSession
+  ) {
+    return await this.chatService.joinChannel(
+      workspaceId,
+      channelId,
+      session.user.id
+    );
+  }
+
+  @Post("channels/:channelId/leave")
+  async leaveChannel(
+    @Param("workspaceId", ParseUUIDPipe) workspaceId: string,
+    @Param("channelId", ParseUUIDPipe) channelId: string,
+    @Session() session: UserSession
+  ) {
+    return await this.chatService.leaveChannel(
+      workspaceId,
+      channelId,
+      session.user.id
+    );
+  }
+
+  @Post("channels/:channelId/lock")
+  async lockChannel(
+    @Param("workspaceId", ParseUUIDPipe) workspaceId: string,
+    @Param("channelId", ParseUUIDPipe) channelId: string,
+    @Session() session: UserSession
+  ) {
+    return await this.chatService.lockChannel(
+      workspaceId,
+      channelId,
+      session.user.id
+    );
+  }
+
+  @Post("channels/:channelId/unlock")
+  async unlockChannel(
+    @Param("workspaceId", ParseUUIDPipe) workspaceId: string,
+    @Param("channelId", ParseUUIDPipe) channelId: string,
+    @Session() session: UserSession
+  ) {
+    return await this.chatService.unlockChannel(
+      workspaceId,
+      channelId,
+      session.user.id
+    );
+  }
+
+  @Delete("channels/:channelId")
+  async deleteChannel(
+    @Param("workspaceId", ParseUUIDPipe) workspaceId: string,
+    @Param("channelId", ParseUUIDPipe) channelId: string,
+    @Session() session: UserSession
+  ) {
+    return await this.chatService.deleteChannel(
+      workspaceId,
+      channelId,
+      session.user.id
+    );
+  }
+
+  @Post("dm")
+  async createOrResolveDm(
+    @Param("workspaceId", ParseUUIDPipe) workspaceId: string,
+    @Session() session: UserSession,
+    @Body() dto: CreateDmDto
+  ) {
+    return await this.chatService.createOrResolveDm(
+      workspaceId,
+      session.user.id,
+      dto
+    );
+  }
+
+  @Get("threads/:threadId/messages")
   async listMessages(
     @Param("workspaceId", ParseUUIDPipe) workspaceId: string,
-    @Param("channelId", ParseUUIDPipe) channelId: string
-  ) {
-    return await this.chatService.listMessages(workspaceId, channelId);
-  }
-
-  @Post("channels/:channelId/messages")
-  async postMessage(
-    @Param("workspaceId", ParseUUIDPipe) workspaceId: string,
-    @Param("channelId", ParseUUIDPipe) channelId: string,
-    @Session() session: UserSession,
-    @Body() body: any
-  ) {
-    return await this.chatService.postMessage(
-      workspaceId,
-      channelId,
-      session.user.id,
-      body
-    );
-  }
-
-  @Get("channels/:channelId/members")
-  async listMembers(
-    @Param("workspaceId", ParseUUIDPipe) workspaceId: string,
-    @Param("channelId", ParseUUIDPipe) channelId: string
-  ) {
-    return await this.chatService.listMembers(workspaceId, channelId);
-  }
-
-  @Post("channels/:channelId/members")
-  async addMember(
-    @Param("workspaceId", ParseUUIDPipe) workspaceId: string,
-    @Param("channelId", ParseUUIDPipe) channelId: string,
-    @Session() session: UserSession,
-    @Body("userId") userId: string
-  ) {
-    return await this.chatService.addMember(
-      workspaceId,
-      channelId,
-      session.user.id,
-      userId
-    );
-  }
-
-  @Delete("channels/:channelId/members/:userId")
-  async removeMember(
-    @Param("workspaceId", ParseUUIDPipe) workspaceId: string,
-    @Param("channelId", ParseUUIDPipe) channelId: string,
-    @Param("userId", ParseUUIDPipe) userId: string,
+    @Param("threadId", ParseUUIDPipe) threadId: string,
     @Session() session: UserSession
   ) {
-    return await this.chatService.removeMember(
+    return await this.chatService.listMessages(
       workspaceId,
-      channelId,
-      session.user.id,
-      userId
+      threadId,
+      session.user.id
     );
   }
 
-  @Post("messages/:messageId/reactions")
-  async addReaction(
+  @Post("threads/:threadId/messages")
+  async createMessage(
+    @Param("workspaceId", ParseUUIDPipe) workspaceId: string,
+    @Param("threadId", ParseUUIDPipe) threadId: string,
+    @Session() session: UserSession,
+    @Body() dto: CreateMessageDto
+  ) {
+    return await this.chatService.createMessage(
+      workspaceId,
+      threadId,
+      session.user.id,
+      dto
+    );
+  }
+
+  @Patch("messages/:messageId")
+  async updateMessage(
     @Param("workspaceId", ParseUUIDPipe) workspaceId: string,
     @Param("messageId", ParseUUIDPipe) messageId: string,
     @Session() session: UserSession,
-    @Body("emoji") emoji: string
+    @Body() dto: UpdateMessageDto
   ) {
-    return await this.chatService.addReaction(
+    return await this.chatService.updateMessage(
       workspaceId,
       messageId,
       session.user.id,
-      emoji
+      dto
     );
   }
 
-  @Delete("messages/:messageId/reactions")
-  async removeReaction(
-    @Param("workspaceId", ParseUUIDPipe) workspaceId: string,
-    @Param("messageId", ParseUUIDPipe) messageId: string,
-    @Session() session: UserSession,
-    @Body("emoji") emoji: string
-  ) {
-    return await this.chatService.removeReaction(
-      workspaceId,
-      messageId,
-      session.user.id,
-      emoji
-    );
-  }
-
-  @Post("messages/:messageId/read")
-  async markRead(
+  @Delete("messages/:messageId")
+  async deleteMessage(
     @Param("workspaceId", ParseUUIDPipe) workspaceId: string,
     @Param("messageId", ParseUUIDPipe) messageId: string,
     @Session() session: UserSession
   ) {
-    return await this.chatService.markRead(
+    return await this.chatService.deleteMessage(
       workspaceId,
       messageId,
       session.user.id
+    );
+  }
+
+  @Post("messages/:messageId/attachments")
+  async uploadAttachment(
+    @Param("workspaceId", ParseUUIDPipe) workspaceId: string,
+    @Param("messageId", ParseUUIDPipe) messageId: string,
+    @Session() session: UserSession,
+    @Body() dto: UploadAttachmentDto
+  ) {
+    return await this.chatService.uploadAttachment(
+      workspaceId,
+      messageId,
+      session.user.id,
+      dto
     );
   }
 }
