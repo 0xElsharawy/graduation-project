@@ -141,7 +141,7 @@ export class ImageNode extends DecoratorNode<JSX.Element> {
     maxWidth: number,
     width?: "inherit" | number,
     height?: "inherit" | number,
-    showCaption: boolean = false,
+    showCaption = false,
     caption?: LexicalEditor,
     captionsEnabled?: boolean,
     key?: NodeKey
