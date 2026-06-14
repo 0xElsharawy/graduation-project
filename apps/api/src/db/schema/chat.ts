@@ -1,6 +1,5 @@
 import { relations, sql } from "drizzle-orm";
 import {
-  boolean,
   check,
   index,
   integer,
@@ -13,248 +12,193 @@ import {
 import { users } from "./auth-schema";
 import { workspaces } from "./workspace";
 
-export const dmConversations = pgTable(
-  "dm_conversations",
+export const chatThreadTypes = ["channel", "dm"] as const;
+
+export type ChatThreadType = (typeof chatThreadTypes)[number];
+
+export const chatThreadVisibilities = ["public", "private"] as const;
+
+export type ChatThreadVisibility = (typeof chatThreadVisibilities)[number];
+
+export const chatThreads = pgTable(
+  "chat_threads",
   {
     id: uuid("id").primaryKey().defaultRandom(),
     workspaceId: uuid("workspace_id")
       .references(() => workspaces.id, { onDelete: "cascade" })
       .notNull(),
-    user1Id: text("user1_id")
-      .references(() => users.id, { onDelete: "cascade" })
-      .notNull(),
-    user2Id: text("user2_id")
-      .references(() => users.id, { onDelete: "cascade" })
-      .notNull(),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-    updatedAt: timestamp("updated_at")
-      .$onUpdate(() => /* @__PURE__ */ new Date())
-      .notNull(),
-  },
-  (t) => [
-    uniqueIndex("dm_unique_pair_idx").on(t.workspaceId, t.user1Id, t.user2Id),
-  ]
-);
-
-export const dmConversationRelations = relations(
-  dmConversations,
-  ({ many, one }) => ({
-    workspace: one(workspaces, {
-      fields: [dmConversations.workspaceId],
-      references: [workspaces.id],
-    }),
-    user1: one(users, {
-      fields: [dmConversations.user1Id],
-      references: [users.id],
-    }),
-    user2: one(users, {
-      fields: [dmConversations.user2Id],
-      references: [users.id],
-    }),
-    messages: many(chatMessages),
-  })
-);
-
-export const chatChannels = pgTable(
-  "chat_channels",
-  {
-    id: uuid("id").primaryKey().defaultRandom(),
-    workspaceId: uuid("workspace_id")
-      .references(() => workspaces.id, { onDelete: "cascade" })
-      .notNull(),
-    name: text("name").notNull(),
-    description: text("description"),
-    isPublic: boolean("is_public").notNull().default(true),
-    createdBy: text("created_by").references(() => users.id, {
+    type: text("type", { enum: chatThreadTypes }).notNull(),
+    name: text("name"),
+    visibility: text("visibility", { enum: chatThreadVisibilities }),
+    createdById: text("created_by_id").references(() => users.id, {
       onDelete: "set null",
     }),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-    updatedAt: timestamp("updated_at")
+    dmKey: text("dm_key"),
+    lockedAt: timestamp("locked_at", { withTimezone: true }),
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
       .$onUpdate(() => /* @__PURE__ */ new Date())
       .notNull(),
   },
   (t) => [
-    index("chat_channels_workspace_id_idx").on(t.workspaceId),
-    uniqueIndex("chat_channels_workspace_name_unique").on(
-      t.workspaceId,
-      t.name
+    uniqueIndex("chat_threads_workspace_dm_key_idx").on(t.workspaceId, t.dmKey),
+    index("chat_threads_workspace_type_idx").on(t.workspaceId, t.type),
+    check(
+      "chat_threads_shape_check",
+      sql`(
+        ${t.type} = 'dm'
+        AND ${t.dmKey} IS NOT NULL
+        AND ${t.visibility} IS NULL
+        AND ${t.name} IS NULL
+      ) OR (
+        ${t.type} = 'channel'
+        AND ${t.dmKey} IS NULL
+        AND ${t.visibility} IS NOT NULL
+        AND ${t.name} IS NOT NULL
+      )`
     ),
   ]
 );
 
-export const chatChannelRelations = relations(
-  chatChannels,
-  ({ many, one }) => ({
-    workspace: one(workspaces, {
-      fields: [chatChannels.workspaceId],
-      references: [workspaces.id],
-    }),
-    creator: one(users, {
-      fields: [chatChannels.createdBy],
-      references: [users.id],
-    }),
-    members: many(channelMembers),
-    messages: many(chatMessages),
-  })
-);
-
-export const channelMembers = pgTable(
-  "channel_members",
+export const chatThreadMembers = pgTable(
+  "chat_thread_members",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    channelId: uuid("channel_id")
-      .references(() => chatChannels.id, { onDelete: "cascade" })
+    workspaceId: uuid("workspace_id")
+      .references(() => workspaces.id, { onDelete: "cascade" })
+      .notNull(),
+    threadId: uuid("thread_id")
+      .references(() => chatThreads.id, { onDelete: "cascade" })
       .notNull(),
     userId: text("user_id")
       .references(() => users.id, { onDelete: "cascade" })
       .notNull(),
-    joinedAt: timestamp("joined_at").defaultNow().notNull(),
+    joinedAt: timestamp("joined_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
   },
   (t) => [
-    uniqueIndex("channel_member_unique").on(t.channelId, t.userId),
-    index("channel_members_user_id_idx").on(t.userId),
+    uniqueIndex("chat_thread_members_thread_user_idx").on(t.threadId, t.userId),
+    index("chat_thread_members_workspace_user_idx").on(t.workspaceId, t.userId),
   ]
 );
-
-export const channelMemberRelations = relations(channelMembers, ({ one }) => ({
-  channel: one(chatChannels, {
-    fields: [channelMembers.channelId],
-    references: [chatChannels.id],
-  }),
-  user: one(users, {
-    fields: [channelMembers.userId],
-    references: [users.id],
-  }),
-}));
 
 export const chatMessages = pgTable(
   "chat_messages",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    channelId: uuid("channel_id").references(() => chatChannels.id, {
-      onDelete: "cascade",
-    }),
-    conversationId: uuid("conversation_id").references(
-      () => dmConversations.id,
-      { onDelete: "cascade" }
-    ),
-    parentMessageId: uuid("parent_message_id").references(
-      () => chatMessages.id,
-      {
-        onDelete: "cascade",
-      }
-    ),
+    workspaceId: uuid("workspace_id")
+      .references(() => workspaces.id, { onDelete: "cascade" })
+      .notNull(),
+    threadId: uuid("thread_id")
+      .references(() => chatThreads.id, { onDelete: "cascade" })
+      .notNull(),
     senderId: text("sender_id").references(() => users.id, {
       onDelete: "set null",
     }),
-    content: text("content"),
-    fileUrl: text("file_url"),
-    fileType: text("file_type"),
-    fileName: text("file_name"),
-    fileSize: integer("file_size"),
+    content: text("content").notNull(),
+    editedAt: timestamp("edited_at", { withTimezone: true }),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).$onUpdate(
-      () => /* @__PURE__ */ new Date()
-    ),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .$onUpdate(() => /* @__PURE__ */ new Date())
+      .notNull(),
   },
   (t) => [
-    check(
-      "message_location_check",
-      sql`(${t.channelId} IS NOT NULL OR ${t.conversationId} IS NOT NULL) AND NOT (${t.channelId} IS NOT NULL AND ${t.conversationId} IS NOT NULL)`
-    ),
-    index("messages_channel_created_idx").on(t.channelId, t.createdAt),
-    index("messages_conversation_created_idx").on(
-      t.conversationId,
+    index("chat_messages_thread_created_idx").on(t.threadId, t.createdAt),
+    index("chat_messages_workspace_sender_created_idx").on(
+      t.workspaceId,
+      t.senderId,
       t.createdAt
     ),
-    index("messages_parent_id_idx").on(t.parentMessageId),
   ]
 );
 
-export const chatMessageRelations = relations(
-  chatMessages,
-  ({ many, one }) => ({
-    channel: one(chatChannels, {
-      fields: [chatMessages.channelId],
-      references: [chatChannels.id],
-    }),
-    conversation: one(dmConversations, {
-      fields: [chatMessages.conversationId],
-      references: [dmConversations.id],
-    }),
-    sender: one(users, {
-      fields: [chatMessages.senderId],
-      references: [users.id],
-    }),
-    parentMessage: one(chatMessages, {
-      fields: [chatMessages.parentMessageId],
-      references: [chatMessages.id],
-      relationName: "message_replies",
-    }),
-    replies: many(chatMessages, {
-      relationName: "message_replies",
-    }),
-    reactions: many(messageReactions),
-    reads: many(messageReads),
-  })
-);
-
-export const messageReactions = pgTable(
-  "message_reactions",
+export const chatMessageAttachments = pgTable(
+  "chat_message_attachments",
   {
     id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .references(() => workspaces.id, { onDelete: "cascade" })
+      .notNull(),
     messageId: uuid("message_id")
       .references(() => chatMessages.id, { onDelete: "cascade" })
       .notNull(),
-    userId: text("user_id")
-      .references(() => users.id, { onDelete: "cascade" })
-      .notNull(),
-    emoji: text("emoji").notNull(),
+    fileUrl: text("file_url").notNull(),
+    fileName: text("file_name").notNull(),
+    fileType: text("file_type").notNull(),
+    fileSize: integer("file_size").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
   },
-  (t) => [uniqueIndex("reaction_unique").on(t.messageId, t.userId, t.emoji)]
+  (t) => [index("chat_message_attachments_message_idx").on(t.messageId)]
 );
 
-export const messageReactionRelations = relations(
-  messageReactions,
+export const chatThreadRelations = relations(chatThreads, ({ one, many }) => ({
+  workspace: one(workspaces, {
+    fields: [chatThreads.workspaceId],
+    references: [workspaces.id],
+  }),
+  creator: one(users, {
+    fields: [chatThreads.createdById],
+    references: [users.id],
+  }),
+  members: many(chatThreadMembers),
+  messages: many(chatMessages),
+}));
+
+export const chatThreadMemberRelations = relations(
+  chatThreadMembers,
   ({ one }) => ({
-    message: one(chatMessages, {
-      fields: [messageReactions.messageId],
-      references: [chatMessages.id],
+    workspace: one(workspaces, {
+      fields: [chatThreadMembers.workspaceId],
+      references: [workspaces.id],
+    }),
+    thread: one(chatThreads, {
+      fields: [chatThreadMembers.threadId],
+      references: [chatThreads.id],
     }),
     user: one(users, {
-      fields: [messageReactions.userId],
+      fields: [chatThreadMembers.userId],
       references: [users.id],
     }),
   })
 );
 
-export const messageReads = pgTable(
-  "message_reads",
-  {
-    id: uuid("id").primaryKey().defaultRandom(),
-    messageId: uuid("message_id")
-      .references(() => chatMessages.id, { onDelete: "cascade" })
-      .notNull(),
-    userId: text("user_id")
-      .references(() => users.id, { onDelete: "cascade" })
-      .notNull(),
-    readAt: timestamp("read_at", { withTimezone: true }).defaultNow().notNull(),
-  },
-  (t) => [uniqueIndex("message_user_unique").on(t.messageId, t.userId)]
-);
-
-export const messageReadRelations = relations(messageReads, ({ one }) => ({
-  message: one(chatMessages, {
-    fields: [messageReads.messageId],
-    references: [chatMessages.id],
+export const chatMessageRelations = relations(chatMessages, ({ one, many }) => ({
+  workspace: one(workspaces, {
+    fields: [chatMessages.workspaceId],
+    references: [workspaces.id],
   }),
-  user: one(users, {
-    fields: [messageReads.userId],
+  thread: one(chatThreads, {
+    fields: [chatMessages.threadId],
+    references: [chatThreads.id],
+  }),
+  sender: one(users, {
+    fields: [chatMessages.senderId],
     references: [users.id],
   }),
+  attachments: many(chatMessageAttachments),
 }));
+
+export const chatMessageAttachmentRelations = relations(
+  chatMessageAttachments,
+  ({ one }) => ({
+    workspace: one(workspaces, {
+      fields: [chatMessageAttachments.workspaceId],
+      references: [workspaces.id],
+    }),
+    message: one(chatMessages, {
+      fields: [chatMessageAttachments.messageId],
+      references: [chatMessages.id],
+    }),
+  })
+);

@@ -1,3 +1,0 @@
-ALTER TABLE "tasks" ALTER COLUMN "status" SET DEFAULT 'backlog';--> statement-breakpoint
-ALTER TABLE "tasks" ADD COLUMN "workspace_id" uuid NOT NULL;--> statement-breakpoint
-ALTER TABLE "tasks" ADD CONSTRAINT "tasks_workspace_id_workspaces_id_fk" FOREIGN KEY ("workspace_id") REFERENCES "public"."workspaces"("id") ON DELETE cascade ON UPDATE no action;
