@@ -3,13 +3,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "next/navigation";
 import { toast } from "sonner";
-import { createMessage, getMessages, getThreads } from "@/lib/chat";
+import { getMessages, getThreads } from "@/lib/chat";
 import { attempt } from "@/lib/error-handling";
 import { findWorkspaceBySlug, getWorkspaceMembers } from "@/lib/workspace";
 import { useAuth } from "@/components/auth-provider";
 import { ChatHeader } from "../../_components/chat-header";
 import { MessageComposer } from "../../_components/message-composer";
 import { MessageList } from "../../_components/message-list";
+import { useChatSocket } from "@/hooks/use-chat-socket";
 
 export default function ChannelPage() {
   const params = useParams();
@@ -49,7 +50,7 @@ export default function ChannelPage() {
   });
 
   const currentMember = membersData?.data?.members?.find(
-    (m) => m.userId === session?.user?.id
+    (m) => m.userId === session?.user?.id,
   );
   const isAdmin = currentMember?.role === "admin";
 
@@ -58,12 +59,13 @@ export default function ChannelPage() {
     queryKey: ["chatMessages", workspaceId, channelId],
     queryFn: () => getMessages(workspaceId, channelId),
     enabled: !!workspaceId,
-    refetchInterval: 5000, // Basic polling since websocket isn't set up yet
+    // Real-time updates handled by websocket
   });
 
+  const { sendMessage } = useChatSocket(workspaceId, channelId);
+
   const sendMessageMutation = useMutation({
-    mutationFn: (content: string) =>
-      createMessage(workspaceId, channelId, { content }),
+    mutationFn: (content: string) => sendMessage(content),
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: ["chatMessages", workspaceId, channelId],

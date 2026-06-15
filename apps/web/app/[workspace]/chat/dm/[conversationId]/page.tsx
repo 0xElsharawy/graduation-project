@@ -2,13 +2,14 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "next/navigation";
-import { createMessage, getMessages, getThreads } from "@/lib/chat";
+import { getMessages, getThreads } from "@/lib/chat";
 import { ChatHeader } from "../../_components/chat-header";
 import { MessageComposer } from "../../_components/message-composer";
 import { MessageList } from "../../_components/message-list";
 import { findWorkspaceBySlug } from "@/lib/workspace";
 import { toast } from "sonner";
 import { attempt } from "@/lib/error-handling";
+import { useChatSocket } from "@/hooks/use-chat-socket";
 
 export default function DMPage() {
   const params = useParams();
@@ -46,12 +47,13 @@ export default function DMPage() {
     queryKey: ["chatMessages", workspaceId, conversationId],
     queryFn: () => getMessages(workspaceId, conversationId),
     enabled: !!workspaceId,
-    refetchInterval: 5000, // Basic polling since websocket isn't set up yet
+    // Real-time updates handled by websocket
   });
 
+  const { sendMessage } = useChatSocket(workspaceId, conversationId);
+
   const sendMessageMutation = useMutation({
-    mutationFn: (content: string) =>
-      createMessage(workspaceId, conversationId, { content }),
+    mutationFn: (content: string) => sendMessage(content),
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: ["chatMessages", workspaceId, conversationId],

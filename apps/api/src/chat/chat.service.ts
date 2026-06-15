@@ -776,7 +776,7 @@ export class ChatService {
       throw new InternalServerErrorException("Failed to update message");
     }
 
-    return ok({ messageId });
+    return ok({ messageId, threadId: message[0].threadId });
   }
 
   async deleteMessage(
@@ -808,7 +808,7 @@ export class ChatService {
       throw new NotFoundException("Message not found");
     }
     if (message[0].deletedAt) {
-      return ok({ messageId });
+      return ok({ messageId, threadId: message[0].threadId });
     }
     if (message[0].senderId !== userId) {
       throw new ForbiddenException("You can only delete your own messages");
@@ -826,7 +826,7 @@ export class ChatService {
       throw new InternalServerErrorException("Failed to delete message");
     }
 
-    return ok({ messageId });
+    return ok({ messageId, threadId: message[0].threadId });
   }
 
   async uploadAttachment(
@@ -884,6 +884,10 @@ export class ChatService {
       throw new InternalServerErrorException("Failed to add attachment");
     }
 
-    return ok({ attachmentId: attachment[0].id, messageId });
+    return ok({
+      attachmentId: attachment[0].id,
+      messageId,
+      threadId: message[0].threadId,
+    });
   }
 }

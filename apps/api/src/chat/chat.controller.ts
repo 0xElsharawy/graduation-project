@@ -18,10 +18,15 @@ import { UpdateChannelDto } from "./dto/update-channel.dto";
 import { UpdateMessageDto } from "./dto/update-message.dto";
 import { UploadAttachmentDto } from "./dto/upload-attachment.dto";
 
+import { ChatGateway } from "./chat.gateway";
+
 @ApiCookieAuth()
 @Controller("workspaces/:workspaceId/chat")
 export class ChatController {
-  constructor(private readonly chatService: ChatService) {}
+  constructor(
+    private readonly chatService: ChatService,
+    private readonly chatGateway: ChatGateway
+  ) {}
 
   @Get("threads")
   async listThreads(
@@ -59,12 +64,19 @@ export class ChatController {
     @Session() session: UserSession,
     @Body() dto: UpdateChannelDto
   ) {
-    return await this.chatService.updateChannel(
+    const result = await this.chatService.updateChannel(
       workspaceId,
       channelId,
       session.user.id,
       dto
     );
+    if (result.ok) {
+      this.chatGateway.broadcastToThread(channelId, "channelUpdated", {
+        channelId,
+        ...dto,
+      });
+    }
+    return result;
   }
 
   @Post("channels/:channelId/join")
@@ -99,11 +111,17 @@ export class ChatController {
     @Param("channelId", ParseUUIDPipe) channelId: string,
     @Session() session: UserSession
   ) {
-    return await this.chatService.lockChannel(
+    const result = await this.chatService.lockChannel(
       workspaceId,
       channelId,
       session.user.id
     );
+    if (result.ok) {
+      this.chatGateway.broadcastToThread(channelId, "channelLocked", {
+        channelId,
+      });
+    }
+    return result;
   }
 
   @Post("channels/:channelId/unlock")
@@ -112,11 +130,17 @@ export class ChatController {
     @Param("channelId", ParseUUIDPipe) channelId: string,
     @Session() session: UserSession
   ) {
-    return await this.chatService.unlockChannel(
+    const result = await this.chatService.unlockChannel(
       workspaceId,
       channelId,
       session.user.id
     );
+    if (result.ok) {
+      this.chatGateway.broadcastToThread(channelId, "channelUnlocked", {
+        channelId,
+      });
+    }
+    return result;
   }
 
   @Delete("channels/:channelId")
@@ -125,11 +149,17 @@ export class ChatController {
     @Param("channelId", ParseUUIDPipe) channelId: string,
     @Session() session: UserSession
   ) {
-    return await this.chatService.deleteChannel(
+    const result = await this.chatService.deleteChannel(
       workspaceId,
       channelId,
       session.user.id
     );
+    if (result.ok) {
+      this.chatGateway.broadcastToThread(channelId, "channelDeleted", {
+        channelId,
+      });
+    }
+    return result;
   }
 
   @Post("dm")
@@ -165,12 +195,20 @@ export class ChatController {
     @Session() session: UserSession,
     @Body() dto: CreateMessageDto
   ) {
-    return await this.chatService.createMessage(
+    const result = await this.chatService.createMessage(
       workspaceId,
       threadId,
       session.user.id,
       dto
     );
+    if (result.ok) {
+      this.chatGateway.broadcastToThread(
+        threadId,
+        "messageCreated",
+        result.data
+      );
+    }
+    return result;
   }
 
   @Patch("messages/:messageId")
@@ -180,12 +218,20 @@ export class ChatController {
     @Session() session: UserSession,
     @Body() dto: UpdateMessageDto
   ) {
-    return await this.chatService.updateMessage(
+    const result = await this.chatService.updateMessage(
       workspaceId,
       messageId,
       session.user.id,
       dto
     );
+    if (result.ok) {
+      this.chatGateway.broadcastToThread(
+        result.data.threadId,
+        "messageUpdated",
+        result.data
+      );
+    }
+    return result;
   }
 
   @Delete("messages/:messageId")
@@ -194,11 +240,19 @@ export class ChatController {
     @Param("messageId", ParseUUIDPipe) messageId: string,
     @Session() session: UserSession
   ) {
-    return await this.chatService.deleteMessage(
+    const result = await this.chatService.deleteMessage(
       workspaceId,
       messageId,
       session.user.id
     );
+    if (result.ok) {
+      this.chatGateway.broadcastToThread(
+        result.data.threadId,
+        "messageDeleted",
+        result.data
+      );
+    }
+    return result;
   }
 
   @Post("messages/:messageId/attachments")
@@ -208,11 +262,19 @@ export class ChatController {
     @Session() session: UserSession,
     @Body() dto: UploadAttachmentDto
   ) {
-    return await this.chatService.uploadAttachment(
+    const result = await this.chatService.uploadAttachment(
       workspaceId,
       messageId,
       session.user.id,
       dto
     );
+    if (result.ok) {
+      this.chatGateway.broadcastToThread(
+        result.data.threadId,
+        "attachmentUploaded",
+        result.data
+      );
+    }
+    return result;
   }
 }
