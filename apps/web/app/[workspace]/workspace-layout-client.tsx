@@ -28,7 +28,7 @@ export function WorkspaceLayoutClient({
   return (
     <SidebarProvider>
       {!isSettingsRoute && <AppSidebar />}
-      <div className="flex h-full flex-1 md:overflow-hidden md:w-[calc(100%-var(--sidebar-width))] flex-col">
+      <div className="flex h-full flex-1 flex-col md:w-[calc(100%-var(--sidebar-width))] md:overflow-hidden">
         {!isSettingsRoute && (
           <header className="flex h-12 shrink-0 items-center justify-between gap-4 border-b px-4 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
             <div className="flex items-center gap-2">

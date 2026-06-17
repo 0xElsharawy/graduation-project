@@ -1,1 +1,0 @@
-ALTER TABLE "workspaces" ADD COLUMN "accessed_at" timestamp DEFAULT now() NOT NULL;
