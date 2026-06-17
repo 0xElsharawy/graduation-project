@@ -1,0 +1,19 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: planova-api
+    static_configs:
+      - targets: ["api:5000"]
+    metrics_path: api/metrics
+
+  - job_name: planova-api-local
+    static_configs:
+      # - targets: ["host.docker.internal:5000"]
+      - targets: ["localhost:5000"]
+    metrics_path: api/metrics
+
+  - job_name: postgres-exporter
+    static_configs:
+      - targets: ["postgres-exporter:9187"]
