@@ -38,6 +38,16 @@ services:
       timeout: 5s
       retries: 5
 
+  pg-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.19.0
+    container_name: planova-pg-exporter
+    <<: *default-service
+    environment:
+      DATA_SOURCE_NAME: "postgresql://postgres:password@postgres:5432/graduation?sslmode=disable"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   api:
     build:
       context: .
@@ -48,6 +58,10 @@ services:
       - "5000:5000"
     env_file:
       - ./apps/api/.env.docker
+    environment:
+      SERVICE_NAME: "planova-api"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://jaeger:4318/v1/traces"
+      LOG_LEVEL: "info"
     depends_on:
       postgres:
         condition: service_healthy
@@ -66,8 +80,78 @@ services:
       api:
         condition: service_started
 
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    container_name: planova-prometheus
+    <<: *default-service
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.retention.time=15d"
+    depends_on:
+      api:
+        condition: service_started
+
+  grafana:
+    image: grafana/grafana:12.3.4
+    container_name: planova-grafana
+    <<: *default-service
+    ports:
+      - "3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: "admin"
+      GF_SECURITY_ADMIN_PASSWORD: "${GRAFANA_PASSWORD:-admin}"
+      GF_FEATURE_TOGGLES_ENABLE: "traceqlEditor"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on:
+      - prometheus
+      - loki
+      - jaeger
+
+  loki:
+    image: grafana/loki:3.1.0
+    container_name: planova-loki
+    <<: *default-service
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./observability/loki.yml:/etc/loki/config.yml:ro
+      - loki_data:/loki
+    command: -config.file=/etc/loki/config.yml
+
+  promtail:
+    image: grafana/promtail:3.1.0
+    container_name: planova-promtail
+    <<: *default-service
+    volumes:
+      - ./observability/promtail.yml:/etc/promtail/config.yml:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    command: -config.file=/etc/promtail/config.yml
+    depends_on:
+      - loki
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.59
+    container_name: planova-jaeger
+    <<: *default-service
+    ports:
+      - "16686:16686" # Jaeger UI
+      - "4318:4318" # OTLP HTTP receiver
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+
 volumes:
   postgres_data:
+  prometheus_data:
+  grafana_data:
+  loki_data:
 
 networks:
   planova-net:
