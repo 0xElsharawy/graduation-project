@@ -6,7 +6,7 @@
     "dev": "turbo run dev",
     "lint": "turbo run lint",
     "check-types": "turbo run check-types",
-    "prepare": "husky",
+    "prepare": "husky || true",
     "format": "npx ultracite fix",
     "check:format": "npx ultracite check"
   },
